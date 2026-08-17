@@ -65,6 +65,52 @@
                 }, 4500);
             }
 
+
+            // ============================================================
+            // TUTORIAL POPUP
+            // ============================================================
+            (function initTutorial() {
+                const overlay = document.getElementById('tutorialOverlay');
+                const closeBtn = document.getElementById('tutorialCloseBtn');
+                const dontShow = document.getElementById('tutorialDontShow');
+                if (!overlay || !closeBtn) return;
+
+                const STORAGE_KEY = 'mlbb_tutorial_hide';
+
+                function hideTutorial() {
+                    if (dontShow && dontShow.checked) {
+                        try { localStorage.setItem(STORAGE_KEY, '1'); } catch (e) {}
+                    }
+                    overlay.classList.remove('show');
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 350);
+                }
+
+                closeBtn.addEventListener('click', hideTutorial);
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) hideTutorial();
+                });
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && overlay.classList.contains('show')) hideTutorial();
+                });
+
+                let shouldShow = true;
+                try {
+                    if (localStorage.getItem(STORAGE_KEY) === '1') shouldShow = false;
+                } catch (e) {}
+
+                if (shouldShow) {
+                    overlay.style.display = 'flex';
+                    // slight delay so animation plays after paint
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => overlay.classList.add('show'));
+                    });
+                } else {
+                    overlay.style.display = 'none';
+                }
+            })();
+
             // ============================================================
             // MENU TABS
             // ============================================================

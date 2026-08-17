@@ -634,3 +634,183 @@
                 font-size: 14px;
             }
         }
+
+
+        /* ===== TUTORIAL POPUP ===== */
+        .tutorial-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(45, 38, 32, 0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+            padding: 20px;
+        }
+
+        .tutorial-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tutorial-modal {
+            background: #fcfaf7;
+            border-radius: 22px;
+            border: 1px solid #e6dfd7;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.06);
+            max-width: 520px;
+            width: 100%;
+            overflow: hidden;
+            transform: translateY(24px) scale(0.97);
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .tutorial-overlay.show .tutorial-modal {
+            transform: translateY(0) scale(1);
+        }
+
+        .tutorial-header {
+            text-align: center;
+            padding: 28px 28px 18px;
+            background: linear-gradient(180deg, #f5f0e9 0%, #fcfaf7 100%);
+            border-bottom: 1px solid #ece6df;
+        }
+
+        .tutorial-icon {
+            font-size: 42px;
+            line-height: 1;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
+        }
+
+        .tutorial-header h2 {
+            font-family: 'Georgia', serif;
+            font-size: 24px;
+            font-weight: 400;
+            color: #3d352e;
+            margin: 0 0 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .tutorial-header p {
+            font-size: 14px;
+            color: #7a6e64;
+            font-style: italic;
+            margin: 0;
+        }
+
+        .tutorial-steps {
+            padding: 22px 26px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .tutorial-step {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #d9d0c5;
+            border: 1px solid #b8aaa0;
+            color: #3d352e;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .step-content {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            padding-top: 2px;
+        }
+
+        .step-content strong {
+            font-size: 15px;
+            color: #3d352e;
+            font-weight: 600;
+        }
+
+        .step-content span {
+            font-size: 13.5px;
+            color: #5a4e44;
+            line-height: 1.55;
+        }
+
+        .step-content span b {
+            color: #3d352e;
+            font-weight: 600;
+        }
+
+        .tutorial-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 18px 26px 24px;
+            border-top: 1px solid #ece6df;
+            background: #faf8f5;
+        }
+
+        .tutorial-dont-show {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #7a6e64;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .tutorial-dont-show input {
+            width: 16px;
+            height: 16px;
+            accent-color: #b8aaa0;
+            cursor: pointer;
+        }
+
+        .tutorial-footer .btn {
+            min-width: 120px;
+        }
+
+        @media (max-width: 520px) {
+            .tutorial-modal {
+                border-radius: 18px;
+            }
+            .tutorial-header {
+                padding: 22px 18px 14px;
+            }
+            .tutorial-header h2 {
+                font-size: 20px;
+            }
+            .tutorial-steps {
+                padding: 16px 18px 8px;
+                gap: 14px;
+            }
+            .tutorial-footer {
+                padding: 14px 18px 20px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .tutorial-footer .btn {
+                width: 100%;
+            }
+        }
+

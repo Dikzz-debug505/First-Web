@@ -18,7 +18,7 @@
         <div class="header">
             <div class="header-left">
                 <h1>MLBB Unity Tools</h1>
-                <p>Hero.bytes Viewer &amp; Document Extractor — dengan Export/Import &amp; Patch</p>
+                <p>Hero.bytes Viewer &amp; Document Extractor — dengan Export/Import &amp; Patch Nyata</p>
             </div>
         </div>
 
@@ -76,7 +76,7 @@
         <div class="menu-panel" id="panel-doc">
 
             <p style="color:#5a4e44; margin-bottom:16px; font-style:italic; font-size:15px; line-height:1.8;">
-                Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML.
+                Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML nyata.
             </p>
 
             <!-- UPLOAD Document.unity3d -->
@@ -148,7 +148,7 @@
                     <input type="file" id="binaryPatchInput" accept=".xml" />
                 </label>
                 <span id="binaryPatchStatus" style="font-size:13px; color:#7a6e64;">belum diupload</span>
-                <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled>🔧 jalankan patch</button>
+                <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled>🔧 jalankan patch nyata</button>
             </div>
 
             <!-- PATCH LOG -->
@@ -168,6 +168,54 @@
 
     <!-- TOAST -->
     <div class="toast" id="toast"></div>
+
+    <!-- TUTORIAL POPUP -->
+    <div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-modal">
+            <div class="tutorial-header">
+                <div class="tutorial-icon">📖</div>
+                <h2>Tutorial Pemakaian</h2>
+                <p>Panduan singkat DocumentExtractor</p>
+            </div>
+            <div class="tutorial-steps">
+                <div class="tutorial-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <strong>Upload file</strong>
+                        <span>Upload <b>Document.unity3d</b> (zona atas) lalu upload <b>ResCheckConf.xml</b> &amp; <b>BinaryPatchMD5.xml</b> (bagian bawah).</span>
+                    </div>
+                </div>
+                <div class="tutorial-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <strong>Ekstrak</strong>
+                        <span>Klik tombol <b>📂 ekstrak &amp; tampilkan</b> untuk membuka isi file.</span>
+                    </div>
+                </div>
+                <div class="tutorial-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <strong>Edit sesuka hati</strong>
+                        <span>Pilih file, muat, ubah isinya, atau export/import sesuai kebutuhan.</span>
+                    </div>
+                </div>
+                <div class="tutorial-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <strong>Pack ulang &amp; download</strong>
+                        <span>Setelah selesai editing, klik tombol <b>📦 pack ulang &amp; download</b>.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tutorial-footer">
+                <label class="tutorial-dont-show">
+                    <input type="checkbox" id="tutorialDontShow" />
+                    <span>Jangan tampilkan lagi</span>
+                </label>
+                <button class="btn btn-primary" id="tutorialCloseBtn">Mengerti ✓</button>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js" defer></script>
 </body>
