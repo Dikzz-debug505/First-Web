@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MLBB Unity Tools</title>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-left">
+                <h1>MLBB Unity Tools</h1>
+                <p>Hero.bytes Viewer &amp; Document Extractor — dengan Export/Import &amp; Patch Nyata</p>
+            </div>
+        </div>
+
+        <!-- MENU TABS -->
+        <div class="menu-tabs">
+            <div class="menu-tab active" data-panel="panel-hero">🧬 Hero.bytes Viewer</div>
+            <div class="menu-tab" data-panel="panel-doc">📦 DocumentExtractor</div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- PANEL 1: HERO.BYTES VIEWER                                    -->
+        <!-- ============================================================ -->
+        <div class="menu-panel active" id="panel-hero">
+
+            <div class="upload-zone" id="heroDropZone">
+                <div class="upload-icon">📄</div>
+                <input type="file" id="heroFileInput" accept=".bytes" />
+                <label for="heroFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;">pilih Hero.bytes</label>
+                <div class="file-name" id="heroFileName">upload file ke sini, atau pilih secara manual</div>
+                <div class="file-size" id="heroFileSize"></div>
+                <div class="action-row">
+                    <button class="btn btn-primary" id="heroScanBtn" disabled>🔍 scan semua hero</button>
+                </div>
+            </div>
+
+            <div class="progress-wrap" id="heroProgressWrap">
+                <div class="progress-bar" id="heroProgressBar"></div>
+                <div class="progress-text" id="heroProgressText">0%</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item"><span class="label">hero</span><span class="value" id="heroStatHero">0</span></div>
+                <div class="stat-item"><span class="label">nilai stat</span><span class="value" id="heroStatValues">0</span></div>
+                <div class="stat-item"><span class="label">ukuran</span><span class="value" id="heroStatSize">-</span></div>
+                <div class="stat-item"><span class="label">status</span><span class="value" id="heroStatStatus" style="font-size:18px; color:#7a6e64;">siap</span></div>
+            </div>
+
+            <div class="global-toggle-row" id="heroGlobalToggle" style="display:none;">
+                <span class="label">☕ semua hero</span>
+                <button class="btn btn-toggle btn-sm" id="heroGlobalOpen">buka</button>
+                <button class="btn btn-toggle btn-sm" id="heroGlobalClose">tutup</button>
+            </div>
+
+            <div id="heroResult"></div>
+
+            <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
+                <button class="btn" id="heroResetBtn" disabled>↺ reset</button>
+                <button class="btn btn-warning" id="heroDownloadBtn" disabled>⬇ simpan</button>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- PANEL 2: DOCUMENTEXTRACTOR                                   -->
+        <!-- ============================================================ -->
+        <div class="menu-panel" id="panel-doc">
+
+            <p style="color:#5a4e44; margin-bottom:16px; font-style:italic; font-size:15px; line-height:1.8;">
+                Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML nyata.
+            </p>
+
+            <!-- UPLOAD Document.unity3d -->
+            <div class="upload-zone" id="docDropZone">
+                <div class="upload-icon">📦</div>
+                <input type="file" id="docFileInput" accept=".unity3d" />
+                <label for="docFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;">pilih Document.unity3d</label>
+                <div class="file-name" id="docFileName">upload Document.unity3d</div>
+                <div class="file-size" id="docFileSize"></div>
+                <div class="action-row">
+                    <button class="btn btn-primary" id="docExtractBtn" disabled>📂 ekstrak &amp; tampilkan</button>
+                </div>
+            </div>
+
+            <!-- PROGRESS DOC -->
+            <div class="progress-wrap" id="docProgressWrap">
+                <div class="progress-bar" id="docProgressBar"></div>
+                <div class="progress-text" id="docProgressText">0%</div>
+            </div>
+
+            <!-- STATS DOC -->
+            <div class="stats-grid">
+                <div class="stat-item"><span class="label">file</span><span class="value" id="docStatFile">-</span></div>
+                <div class="stat-item"><span class="label">entries</span><span class="value" id="docStatEntries">0</span></div>
+                <div class="stat-item"><span class="label">ukuran</span><span class="value" id="docStatSize">-</span></div>
+                <div class="stat-item"><span class="label">status</span><span class="value" id="docStatStatus" style="font-size:18px; color:#7a6e64;">siap</span></div>
+            </div>
+
+            <!-- FILE LIST -->
+            <div id="docFileListContainer">
+                <div class="file-list" id="docFileList">
+                    <div class="no-data" style="padding:12px;">belum ada file, ekstrak dulu</div>
+                </div>
+            </div>
+
+            <!-- EDITOR + EXPORT/IMPORT -->
+            <div style="margin:16px 0; display:flex; flex-wrap:wrap; gap:14px; align-items:center;">
+                <div>
+                    <label style="font-family:'Segoe UI',sans-serif; font-size:14px; color:#5a4e44; margin-right:6px;">📝 edit file:</label>
+                    <select id="docFileSelect" style="padding:6px 14px; border-radius:30px; border:1px solid #d6cec4; background:#fcfaf7; font-family:'Segoe UI',sans-serif; font-size:14px;">
+                        <option value="">— pilih file —</option>
+                    </select>
+                    <button class="btn btn-sm" id="docLoadEditBtn" disabled>muat</button>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-success" id="docExportBtn" disabled>⬇ export file</button>
+                    <label class="mini-upload" id="docImportLabel">
+                        📥 import file
+                        <input type="file" id="docImportInput" />
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <textarea id="docEditArea" rows="6" style="width:100%; background:#fcfaf7; border:1px solid #d6cec4; border-radius:10px; padding:12px 16px; font-family:'Consolas',monospace; font-size:14px; color:#2c2a28; resize:vertical; display:none; line-height:1.8;"></textarea>
+                <button class="btn btn-sm" id="docApplyEditBtn" style="display:none; margin-top:8px;" disabled>terapkan perubahan</button>
+            </div>
+
+            <!-- UPLOAD ResCheckConf.xml & BinaryPatchMD5.xml -->
+            <div style="margin:16px 0; display:flex; flex-wrap:wrap; gap:18px; align-items:center; background:#faf8f5; padding:16px 22px; border-radius:14px; border:1px solid #e6dfd7;">
+                <span style="font-family:'Segoe UI',sans-serif; font-size:14px; color:#5a4e44;">🔧 Patch XML:</span>
+                <label class="mini-upload" id="resCheckLabel">
+                    📄 ResCheckConf.xml
+                    <input type="file" id="resCheckInput" accept=".xml" />
+                </label>
+                <span id="resCheckStatus" style="font-size:13px; color:#7a6e64;">belum diupload</span>
+                <label class="mini-upload" id="binaryPatchLabel">
+                    📄 BinaryPatchMD5.xml
+                    <input type="file" id="binaryPatchInput" accept=".xml" />
+                </label>
+                <span id="binaryPatchStatus" style="font-size:13px; color:#7a6e64;">belum diupload</span>
+                <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled>🔧 jalankan patch nyata</button>
+            </div>
+
+            <!-- PATCH LOG -->
+            <div class="xml-patch-log" id="docPatchLog"></div>
+
+            <!-- PACK & DOWNLOAD -->
+            <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
+                <button class="btn btn-warning" id="docPackBtn" disabled>📦 pack ulang &amp; download</button>
+                <button class="btn" id="docResetBtn" disabled>↺ reset</button>
+            </div>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">semua proses di sini, tidak ada data yang dikirim ke mana pun</div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
