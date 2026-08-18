@@ -66,6 +66,82 @@
             }
 
             // ============================================================
+            // BACKGROUND MUSIC TOGGLE
+            // ============================================================
+            (function initBgm() {
+                const audio = document.getElementById('bgmAudio');
+                const btn = document.getElementById('musicToggleBtn');
+                if (!audio || !btn) return;
+
+                const MUSIC_PREF_KEY = 'mlbb_bgm_enabled';
+                let isPlaying = false;
+
+                function updateBtn() {
+                    if (isPlaying) {
+                        btn.textContent = '🔊 Musik';
+                        btn.classList.add('playing');
+                        btn.title = 'Matikan Musik';
+                    } else {
+                        btn.textContent = '🔇 Musik';
+                        btn.classList.remove('playing');
+                        btn.title = 'Hidupkan Musik';
+                    }
+                }
+
+                function playMusic() {
+                    audio.volume = 0.35;
+                    const p = audio.play();
+                    if (p && typeof p.then === 'function') {
+                        p.then(() => {
+                            isPlaying = true;
+                            localStorage.setItem(MUSIC_PREF_KEY, '1');
+                            updateBtn();
+                        }).catch(() => {
+                            // Autoplay blocked — user must click
+                            isPlaying = false;
+                            updateBtn();
+                        });
+                    } else {
+                        isPlaying = true;
+                        localStorage.setItem(MUSIC_PREF_KEY, '1');
+                        updateBtn();
+                    }
+                }
+
+                function stopMusic() {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    isPlaying = false;
+                    localStorage.setItem(MUSIC_PREF_KEY, '0');
+                    updateBtn();
+                }
+
+                btn.addEventListener('click', function () {
+                    if (isPlaying) {
+                        stopMusic();
+                        showToast('🔇 Musik dimatikan', 'info');
+                    } else {
+                        playMusic();
+                        showToast('🔊 Musik dihidupkan', 'success');
+                    }
+                });
+
+                // Restore preference (but do not autoplay until user interaction if blocked)
+                if (localStorage.getItem(MUSIC_PREF_KEY) === '1') {
+                    // Try soft resume after first user gesture anywhere
+                    const resumeOnce = function () {
+                        document.removeEventListener('click', resumeOnce, true);
+                        if (localStorage.getItem(MUSIC_PREF_KEY) === '1' && !isPlaying) {
+                            playMusic();
+                        }
+                    };
+                    document.addEventListener('click', resumeOnce, true);
+                }
+
+                updateBtn();
+            })();
+
+            // ============================================================
             // LOGIN GATE (client-side access control + hardening)
             // + Admin Panel + Device Limit per user
             // ============================================================

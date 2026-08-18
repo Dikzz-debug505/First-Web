@@ -200,6 +200,20 @@ body {
     font-size: 11px;
 }
 
+.btn-music {
+    min-width: 90px;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-music.playing {
+    background: #1a3a2a;
+    border-color: #2ecc71;
+    color: #2ecc71;
+}
+.btn-music.playing:hover:not(:disabled) {
+    background: #2ecc71;
+    color: #0d0f12;
+}
+
 .btn-success {
     background: #005f4a;
     border-color: var(--success);

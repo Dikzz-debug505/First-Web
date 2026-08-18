@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MLBB Unity Tools</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; worker-src 'none'; media-src 'none'; manifest-src 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; worker-src 'none'; media-src 'self'; manifest-src 'none';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
@@ -53,10 +53,12 @@
                 <p>Hero.bytes Viewer, Document Extractor &amp; GameObject Overrider — Export/Import &amp; Patch</p>
             </div>
             <div class="header-right">
+                <button class="btn btn-sm btn-music" id="musicToggleBtn" title="Hidupkan / Matikan Musik">🔇 Musik</button>
                 <span class="login-user-badge" id="loginUserBadge"></span>
                 <button class="btn btn-sm" id="logoutBtn" title="Keluar">Keluar</button>
             </div>
         </div>
+        <audio id="bgmAudio" src="bgm.mp3" loop preload="auto"></audio>
 
         <!-- MENU TABS -->
         <div class="menu-tabs">

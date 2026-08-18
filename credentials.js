@@ -3,8 +3,8 @@ window.MLBB_USERS = [
     // Username & Password ini HANYA untuk membuat/mengatur user lain + set batas device.
     // Jangan bagikan ke user biasa.
     {
-        username: "adi",
-        password: "ilyas",
+        username: "master",
+        password: "master2026",
         isAdmin: true,
         maxDevices: 1,   // null = unlimited
         expiryDate: null
