@@ -505,7 +505,7 @@
                         heroFileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
                         heroStatSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
                         heroStatStatus.textContent = 'loaded';
-                        heroStatStatus.style.color = '#5a7a6a';
+                        heroStatStatus.style.color = '#16a34a';
                         heroData = [];
                         heroResult.innerHTML = '';
                         heroStatHero.textContent = '0';
@@ -546,7 +546,7 @@
                 heroResetBtn.disabled = true;
                 heroGlobalToggle.style.display = 'none';
                 heroStatStatus.textContent = 'scanning...';
-                heroStatStatus.style.color = '#b8a87a';
+                heroStatStatus.style.color = '#d97706';
                 heroResult.innerHTML = '';
                 heroData = [];
                 heroProgressWrap.classList.add('active');
@@ -582,7 +582,7 @@
                     heroProgressWrap.classList.remove('active');
                     heroShowToast('⚠️ tidak ditemukan hero', 'warning');
                     heroStatStatus.textContent = 'selesai (0 hero)';
-                    heroStatStatus.style.color = '#7a6e64';
+                    heroStatStatus.style.color = '#65676b';
                     heroScanning = false;
                     heroScanBtn.disabled = false;
                     heroScanBtn.textContent = '🔍 scan semua hero';
@@ -602,7 +602,7 @@
                         heroData.forEach(h => totalVals += h.values.length);
                         heroStatValues.textContent = totalVals;
                         heroStatStatus.textContent = 'selesai (' + heroData.length + ' hero)';
-                        heroStatStatus.style.color = '#5a7a6a';
+                        heroStatStatus.style.color = '#16a34a';
                         heroScanning = false;
                         heroScanBtn.disabled = false;
                         heroScanBtn.textContent = '🔍 scan semua hero';
@@ -828,7 +828,7 @@
                 heroGlobalToggle.style.display = 'none';
                 heroShowToast('↺ reset berhasil, scan ulang', 'warning');
                 heroStatStatus.textContent = 'reset';
-                heroStatStatus.style.color = '#7a6e64';
+                heroStatStatus.style.color = '#65676b';
             });
 
             heroDownloadBtn.addEventListener('click', function() {
@@ -850,7 +850,7 @@
             });
 
             heroStatStatus.textContent = 'tunggu upload';
-            heroStatStatus.style.color = '#7a6e64';
+            heroStatStatus.style.color = '#65676b';
             heroShowToast('📂 upload Hero.bytes untuk memulai', 'info');
 
             // ============================================================
@@ -922,7 +922,7 @@
                         docFileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
                         docStatSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
                         docStatStatus.textContent = 'loaded';
-                        docStatStatus.style.color = '#5a7a6a';
+                        docStatStatus.style.color = '#16a34a';
                         docExtractBtn.disabled = false;
                         docEntries = [];
                         docModified = {};
@@ -963,7 +963,7 @@
                 const file = this.files[0];
                 if (!file) {
                     resCheckStatus.textContent = 'belum diupload';
-                    resCheckStatus.style.color = '#7a6e64';
+                    resCheckStatus.style.color = '#65676b';
                     docResCheckXML = null;
                     updatePatchButton();
                     return;
@@ -973,13 +973,13 @@
                     try {
                         docResCheckXML = new Uint8Array(ev.target.result);
                         resCheckStatus.textContent = '✅ ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
-                        resCheckStatus.style.color = '#5a7a6a';
+                        resCheckStatus.style.color = '#16a34a';
                         docShowToast('✅ ResCheckConf.xml dimuat', 'success');
                         updatePatchButton();
                     } catch (err) {
                         docResCheckXML = null;
                         resCheckStatus.textContent = '❌ gagal baca';
-                        resCheckStatus.style.color = '#c48a7a';
+                        resCheckStatus.style.color = '#dc2626';
                         docShowToast('❌ Gagal baca ResCheckConf.xml', 'error');
                         updatePatchButton();
                     }
@@ -987,7 +987,7 @@
                 reader.onerror = function() {
                     docResCheckXML = null;
                     resCheckStatus.textContent = '❌ error';
-                    resCheckStatus.style.color = '#c48a7a';
+                    resCheckStatus.style.color = '#dc2626';
                     docShowToast('❌ Error baca ResCheckConf.xml', 'error');
                     updatePatchButton();
                 };
@@ -1000,7 +1000,7 @@
                 const file = this.files[0];
                 if (!file) {
                     binaryPatchStatus.textContent = 'belum diupload';
-                    binaryPatchStatus.style.color = '#7a6e64';
+                    binaryPatchStatus.style.color = '#65676b';
                     docBinaryPatchXML = null;
                     updatePatchButton();
                     return;
@@ -1010,13 +1010,13 @@
                     try {
                         docBinaryPatchXML = new Uint8Array(ev.target.result);
                         binaryPatchStatus.textContent = '✅ ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
-                        binaryPatchStatus.style.color = '#5a7a6a';
+                        binaryPatchStatus.style.color = '#16a34a';
                         docShowToast('✅ BinaryPatchMD5.xml dimuat', 'success');
                         updatePatchButton();
                     } catch (err) {
                         docBinaryPatchXML = null;
                         binaryPatchStatus.textContent = '❌ gagal baca';
-                        binaryPatchStatus.style.color = '#c48a7a';
+                        binaryPatchStatus.style.color = '#dc2626';
                         docShowToast('❌ Gagal baca BinaryPatchMD5.xml', 'error');
                         updatePatchButton();
                     }
@@ -1024,7 +1024,7 @@
                 reader.onerror = function() {
                     docBinaryPatchXML = null;
                     binaryPatchStatus.textContent = '❌ error';
-                    binaryPatchStatus.style.color = '#c48a7a';
+                    binaryPatchStatus.style.color = '#dc2626';
                     docShowToast('❌ Error baca BinaryPatchMD5.xml', 'error');
                     updatePatchButton();
                 };
@@ -1083,7 +1083,7 @@
                         docStatEntries.textContent = entries.length;
                         docStatFile.textContent = 'Document.unity3d';
                         docStatStatus.textContent = 'extracted (' + entries.length + ' files)';
-                        docStatStatus.style.color = '#5a7a6a';
+                        docStatStatus.style.color = '#16a34a';
                         docPackBtn.disabled = false;
                         docResetBtn.disabled = false;
                         docExportBtn.disabled = false;
@@ -1457,7 +1457,7 @@
                 docStatEntries.textContent = '0';
                 docStatFile.textContent = '-';
                 docStatStatus.textContent = 'reset';
-                docStatStatus.style.color = '#7a6e64';
+                docStatStatus.style.color = '#65676b';
                 docPatchBtn.disabled = true;
                 docPackBtn.disabled = true;
                 docResetBtn.disabled = true;
@@ -1468,7 +1468,7 @@
 
             // INIT
             docStatStatus.textContent = 'tunggu upload';
-            docStatStatus.style.color = '#7a6e64';
+            docStatStatus.style.color = '#65676b';
             docShowToast('📦 upload Document.unity3d untuk memulai', 'info');
 
             // ============================================================
@@ -1624,7 +1624,7 @@
                         goStatGO.textContent = '-';
                         goStatCAB.textContent = '0';
                         goStatStatus.textContent = 'loaded';
-                        goStatStatus.style.color = '#5a7a6a';
+                        goStatStatus.style.color = '#16a34a';
                         goProcessBtn.disabled = false;
                         goDownloadBtn.disabled = true;
                         goResetBtn.disabled = false;
@@ -1660,7 +1660,7 @@
                 goProgressBar.style.width = '10%';
                 goProgressText.textContent = '10%';
                 goStatStatus.textContent = 'processing';
-                goStatStatus.style.color = '#8a7040';
+                goStatStatus.style.color = '#d97706';
 
                 setTimeout(function () {
                     try {
@@ -1687,7 +1687,7 @@
                             goStatGO.textContent = 'tidak ketemu';
                             goStatCAB.textContent = '0';
                             goStatStatus.textContent = 'gagal';
-                            goStatStatus.style.color = '#c48a7a';
+                            goStatStatus.style.color = '#dc2626';
                             goLog.style.display = 'block';
                             goLog.textContent = 'GameObject "' + goFileBaseName + '" maupun String CAB tidak ditemukan.\nPastikan nama file = nama GameObject, atau isi CAB baru.';
                             goResultBytes = null;
@@ -1698,7 +1698,7 @@
                             goStatGO.textContent = goResult.disabled ? ('OFF ×' + goResult.count) : 'skip';
                             goStatCAB.textContent = String(cabResult.count);
                             goStatStatus.textContent = 'siap unduh';
-                            goStatStatus.style.color = '#5a7a6a';
+                            goStatStatus.style.color = '#16a34a';
                             goDownloadBtn.disabled = false;
 
                             const lines = [];
@@ -1721,7 +1721,7 @@
                         }
                     } catch (e) {
                         goStatStatus.textContent = 'error';
-                        goStatStatus.style.color = '#c48a7a';
+                        goStatStatus.style.color = '#dc2626';
                         goLog.style.display = 'block';
                         goLog.textContent = 'ERROR: ' + e.message;
                         goShowToast('❌ gagal process: ' + e.message, 'error');
@@ -1770,7 +1770,7 @@
                 goStatGO.textContent = '-';
                 goStatCAB.textContent = '0';
                 goStatStatus.textContent = 'siap';
-                goStatStatus.style.color = '#7a6e64';
+                goStatStatus.style.color = '#65676b';
                 goProcessBtn.disabled = true;
                 goDownloadBtn.disabled = true;
                 goResetBtn.disabled = true;
@@ -1781,6 +1781,6 @@
             });
 
             goStatStatus.textContent = 'tunggu upload';
-            goStatStatus.style.color = '#7a6e64';
+            goStatStatus.style.color = '#65676b';
 
         })();
