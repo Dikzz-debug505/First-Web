@@ -66,9 +66,17 @@
             }
 
             // ============================================================
-            // LOGIN GATE (client-side access control)
+            // LOGIN GATE (client-side access control + hardening)
             // ============================================================
-            const LOGIN_SESSION_KEY = 'mlbb_auth_session_v1';
+            const LOGIN_SESSION_KEY = 'mlbb_auth_session_v2';
+            const LOGIN_FAIL_KEY = 'mlbb_login_fail_v1';
+            const MAX_FAIL_ATTEMPTS = 5;
+            const LOCKOUT_MS = 60 * 1000;          // 60 detik lock setelah 5 gagal
+            const FAIL_DELAY_BASE_MS = 400;        // delay dasar saat gagal
+            const SUCCESS_SPIN_MS = 900;           // waktu spinner sebelum success state
+            const SUCCESS_HOLD_MS = 650;           // waktu tampil checkmark sebelum fade-out
+            const FADE_OUT_MS = 550;
+
             const loginOverlay = document.getElementById('loginOverlay');
             const mainApp = document.getElementById('mainApp');
             const loginForm = document.getElementById('loginForm');
@@ -77,6 +85,11 @@
             const loginError = document.getElementById('loginError');
             const loginUserBadge = document.getElementById('loginUserBadge');
             const logoutBtn = document.getElementById('logoutBtn');
+            const loginSpinner = document.getElementById('loginSpinner');
+            const loginSpinnerText = document.getElementById('loginSpinnerText');
+            const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+            let loginInProgress = false;
 
             function getUsers() {
                 const list = window.MLBB_USERS;
@@ -84,6 +97,7 @@
                 return list;
             }
 
+            /** Constant-time string compare (anti timing side-channel) */
             function timingSafeEqual(a, b) {
                 const sa = String(a ?? '');
                 const sb = String(b ?? '');
@@ -97,26 +111,76 @@
                 return diff === 0;
             }
 
+            function readFailState() {
+                try {
+                    const raw = sessionStorage.getItem(LOGIN_FAIL_KEY);
+                    if (!raw) return { count: 0, lockUntil: 0 };
+                    const obj = JSON.parse(raw);
+                    return {
+                        count: Math.max(0, Number(obj.count) || 0),
+                        lockUntil: Number(obj.lockUntil) || 0
+                    };
+                } catch (e) {
+                    return { count: 0, lockUntil: 0 };
+                }
+            }
+
+            function writeFailState(state) {
+                try {
+                    sessionStorage.setItem(LOGIN_FAIL_KEY, JSON.stringify({
+                        count: state.count,
+                        lockUntil: state.lockUntil
+                    }));
+                } catch (e) {}
+            }
+
+            function clearFailState() {
+                try { sessionStorage.removeItem(LOGIN_FAIL_KEY); } catch (e) {}
+            }
+
+            function isLockedOut() {
+                const st = readFailState();
+                return Date.now() < st.lockUntil;
+            }
+
+            function remainingLockSeconds() {
+                const st = readFailState();
+                return Math.max(0, Math.ceil((st.lockUntil - Date.now()) / 1000));
+            }
+
+            function registerFailedAttempt() {
+                const st = readFailState();
+                st.count += 1;
+                if (st.count >= MAX_FAIL_ATTEMPTS) {
+                    st.lockUntil = Date.now() + LOCKOUT_MS;
+                    st.count = 0; // reset counter setelah lock
+                }
+                writeFailState(st);
+                return st;
+            }
+
             function validateCredentials(username, password) {
                 const users = getUsers();
                 const u = String(username || '').trim();
                 const p = String(password || '');
+                // Minimal length check (anti trivial empty / short brute)
+                if (u.length < 1 || u.length > 64 || p.length < 1 || p.length > 128) {
+                    return { ok: false };
+                }
                 for (let i = 0; i < users.length; i++) {
                     const row = users[i];
                     if (!row) continue;
                     if (timingSafeEqual(String(row.username || '').trim(), u) &&
                         timingSafeEqual(String(row.password || ''), p)) {
-                        
-                        // Check expiry date
+
                         if (row.expiryDate) {
                             const expDate = new Date(String(row.expiryDate));
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
-                            if (today > expDate) {
+                            if (isNaN(expDate.getTime()) || today > expDate) {
                                 return { ok: false, expired: true };
                             }
                         }
-                        
                         return { ok: true, username: String(row.username || '').trim() };
                     }
                 }
@@ -125,9 +189,12 @@
 
             function setSession(username) {
                 try {
+                    // Token sederhana: username + timestamp + random (bukan crypto, hanya UI gate)
+                    const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
                     sessionStorage.setItem(LOGIN_SESSION_KEY, JSON.stringify({
                         u: username,
-                        t: Date.now()
+                        t: Date.now(),
+                        n: nonce
                     }));
                 } catch (e) {}
             }
@@ -141,7 +208,8 @@
                     const raw = sessionStorage.getItem(LOGIN_SESSION_KEY);
                     if (!raw) return null;
                     const obj = JSON.parse(raw);
-                    if (!obj || !obj.u) return null;
+                    if (!obj || !obj.u || typeof obj.u !== 'string') return null;
+                    // Session max 12 jam
                     if (obj.t && (Date.now() - obj.t > 12 * 60 * 60 * 1000)) {
                         clearSession();
                         return null;
@@ -152,67 +220,144 @@
                 }
             }
 
-            function showMainApp(username) {
-                if (loginOverlay) loginOverlay.classList.add('hidden');
+            function setFormDisabled(disabled) {
+                if (loginUser) loginUser.disabled = disabled;
+                if (loginPass) loginPass.disabled = disabled;
+                if (loginSubmitBtn) loginSubmitBtn.disabled = disabled;
+            }
+
+            function showSpinner(text) {
+                if (!loginSpinner) return;
+                loginSpinner.classList.remove('success');
+                loginSpinner.classList.add('active');
+                loginSpinner.setAttribute('aria-busy', 'true');
+                if (loginSpinnerText) loginSpinnerText.textContent = text || 'Memproses login...';
+                if (loginSubmitBtn) loginSubmitBtn.style.display = 'none';
+            }
+
+            function showSpinnerSuccess(text) {
+                if (!loginSpinner) return;
+                loginSpinner.classList.add('success');
+                loginSpinner.setAttribute('aria-busy', 'false');
+                if (loginSpinnerText) loginSpinnerText.textContent = text || 'Berhasil! Mengalihkan...';
+            }
+
+            function hideSpinner() {
+                if (!loginSpinner) return;
+                loginSpinner.classList.remove('active', 'success');
+                loginSpinner.setAttribute('aria-busy', 'false');
+                if (loginSubmitBtn) loginSubmitBtn.style.display = '';
+            }
+
+            function showMainApp(username, skipOverlayHide) {
                 if (mainApp) mainApp.style.display = '';
                 if (loginUserBadge) loginUserBadge.textContent = '👤 ' + username;
+                if (!skipOverlayHide && loginOverlay) {
+                    loginOverlay.classList.add('hidden');
+                    loginOverlay.classList.remove('fade-out');
+                }
                 initTutorialAfterLogin();
             }
 
+            function hideLoginOverlaySmooth(callback) {
+                if (!loginOverlay) {
+                    if (callback) callback();
+                    return;
+                }
+                loginOverlay.classList.add('fade-out');
+                setTimeout(function () {
+                    loginOverlay.classList.add('hidden');
+                    loginOverlay.classList.remove('fade-out');
+                    hideSpinner();
+                    setFormDisabled(false);
+                    if (callback) callback();
+                }, FADE_OUT_MS);
+            }
+
             function showLoginScreen() {
-                if (loginOverlay) loginOverlay.classList.remove('hidden');
+                if (loginOverlay) {
+                    loginOverlay.classList.remove('hidden', 'fade-out');
+                }
                 if (mainApp) mainApp.style.display = 'none';
                 if (loginError) {
                     loginError.style.display = 'none';
                     loginError.textContent = '';
                 }
+                hideSpinner();
+                setFormDisabled(false);
+                loginInProgress = false;
                 if (loginPass) loginPass.value = '';
                 if (loginUser) {
                     loginUser.value = '';
-                    setTimeout(function () { loginUser.focus(); }, 50);
+                    setTimeout(function () { loginUser.focus(); }, 60);
                 }
             }
 
             function attemptLogin(username, password) {
-                const loginSpinner = document.getElementById('loginSpinner');
-                const loginSubmitBtn = document.getElementById('loginSubmitBtn');
-                
-                // Show loading spinner
-                if (loginSubmitBtn) loginSubmitBtn.style.display = 'none';
-                if (loginSpinner) loginSpinner.style.display = 'flex';
-                
-                const result = validateCredentials(username, password);
-                
-                if (!result.ok) {
-                    // Hide spinner, show error
-                    if (loginSpinner) loginSpinner.style.display = 'none';
-                    if (loginSubmitBtn) loginSubmitBtn.style.display = 'block';
-                    
+                if (loginInProgress) return false;
+                if (isLockedOut()) {
+                    const sec = remainingLockSeconds();
                     if (loginError) {
-                        if (result.expired) {
-                            loginError.textContent = '❌ Akun sudah kedaluarsa.';
-                        } else {
-                            loginError.textContent = 'Username atau password salah.';
-                        }
+                        loginError.textContent = '🔒 Terlalu banyak percobaan. Coba lagi dalam ' + sec + ' detik.';
                         loginError.style.display = 'block';
-                    }
-                    if (loginPass) {
-                        loginPass.value = '';
-                        loginPass.focus();
                     }
                     return false;
                 }
-                
-                // Simulate loading time (500ms) untuk smooth animation
-                setTimeout(function() {
-                    setSession(result.username);
-                    showMainApp(result.username);
-                    showToast('✅ Selamat datang, ' + result.username, 'success');
-                    // Reset button
-                    if (loginSpinner) loginSpinner.style.display = 'none';
-                    if (loginSubmitBtn) loginSubmitBtn.style.display = 'block';
-                }, 500);
-                
+
+                loginInProgress = true;
+                setFormDisabled(true);
+                if (loginError) {
+                    loginError.style.display = 'none';
+                    loginError.textContent = '';
+                }
+                showSpinner('Memproses login...');
+
+                // Validasi sinkron, lalu delay artifisial agar UX smooth + anti timing leak ringan
+                const result = validateCredentials(username, password);
+
+                if (!result.ok) {
+                    const failState = registerFailedAttempt();
+                    const delay = FAIL_DELAY_BASE_MS + Math.min(failState.count, 5) * 250;
+
+                    setTimeout(function () {
+                        hideSpinner();
+                        setFormDisabled(false);
+                        loginInProgress = false;
+
+                        if (loginError) {
+                            if (result.expired) {
+                                loginError.textContent = '❌ Akun sudah kedaluarsa.';
+                            } else if (isLockedOut()) {
+                                loginError.textContent = '🔒 Terlalu banyak percobaan gagal. Akun terkunci sementara ' + Math.ceil(LOCKOUT_MS / 1000) + ' detik.';
+                            } else {
+                                const left = MAX_FAIL_ATTEMPTS - readFailState().count;
+                                loginError.textContent = 'Username atau password salah.' +
+                                    (left > 0 && left < MAX_FAIL_ATTEMPTS ? ' (sisa ' + left + ' percobaan)' : '');
+                            }
+                            loginError.style.display = 'block';
+                        }
+                        if (loginPass) {
+                            loginPass.value = '';
+                            loginPass.focus();
+                        }
+                    }, delay);
+                    return false;
+                }
+
+                // === SUCCESS PATH: spinner → checkmark → fade-out smooth ===
+                clearFailState();
+                setTimeout(function () {
+                    showSpinnerSuccess('Berhasil! Mengalihkan...');
+                    setTimeout(function () {
+                        setSession(result.username);
+                        hideLoginOverlaySmooth(function () {
+                            showMainApp(result.username, true);
+                            showToast('✅ Selamat datang, ' + result.username, 'success');
+                            loginInProgress = false;
+                        });
+                    }, SUCCESS_HOLD_MS);
+                }, SUCCESS_SPIN_MS);
+
                 return true;
             }
 
@@ -240,6 +385,7 @@
             if (loginForm) {
                 loginForm.addEventListener('submit', function (e) {
                     e.preventDefault();
+                    if (loginInProgress) return;
                     const u = loginUser ? loginUser.value : '';
                     const p = loginPass ? loginPass.value : '';
                     attemptLogin(u, p);

@@ -31,14 +31,15 @@
                 </div>
                 <div class="login-error" id="loginError" style="display:none;"></div>
                 <button type="submit" class="btn btn-primary login-btn" id="loginSubmitBtn">Masuk</button>
-                <div class="login-spinner" id="loginSpinner" style="display:none;">
-                    <div class="spinner"></div>
-                    <p>Memproses login...</p>
+                <div class="login-spinner" id="loginSpinner" aria-live="polite" aria-busy="false">
+                    <div class="spinner" id="loginSpinnerIcon"></div>
+                    <p id="loginSpinnerText">Memproses login...</p>
                 </div>
             </form>
             <div class="login-note">
                 Kredensial diatur di file <code>credentials.js</code>.
-                Login bersifat penghalang UI di browser — jangan gunakan password sensitif.
+                Dilindungi rate-limit &amp; lockout anti-brute-force (client-side).
+                Jangan gunakan password sensitif — ini hanya penghalang UI.
             </div>
         </div>
     </div>
