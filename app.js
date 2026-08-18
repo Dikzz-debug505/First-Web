@@ -65,15 +65,170 @@
                 }, 4500);
             }
 
+            // ============================================================
+            // LOGIN GATE (client-side access control)
+            // ============================================================
+            const LOGIN_SESSION_KEY = 'mlbb_auth_session_v1';
+            const loginOverlay = document.getElementById('loginOverlay');
+            const mainApp = document.getElementById('mainApp');
+            const loginForm = document.getElementById('loginForm');
+            const loginUser = document.getElementById('loginUser');
+            const loginPass = document.getElementById('loginPass');
+            const loginError = document.getElementById('loginError');
+            const loginUserBadge = document.getElementById('loginUserBadge');
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            function getUsers() {
+                const list = window.MLBB_USERS;
+                if (!Array.isArray(list) || list.length === 0) return [];
+                return list;
+            }
+
+            function timingSafeEqual(a, b) {
+                const sa = String(a ?? '');
+                const sb = String(b ?? '');
+                const max = Math.max(sa.length, sb.length);
+                let diff = sa.length ^ sb.length;
+                for (let i = 0; i < max; i++) {
+                    const ca = i < sa.length ? sa.charCodeAt(i) : 0;
+                    const cb = i < sb.length ? sb.charCodeAt(i) : 0;
+                    diff |= ca ^ cb;
+                }
+                return diff === 0;
+            }
+
+            function validateCredentials(username, password) {
+                const users = getUsers();
+                const u = String(username || '').trim();
+                const p = String(password || '');
+                for (let i = 0; i < users.length; i++) {
+                    const row = users[i];
+                    if (!row) continue;
+                    if (timingSafeEqual(String(row.username || '').trim(), u) &&
+                        timingSafeEqual(String(row.password || ''), p)) {
+                        return { ok: true, username: String(row.username || '').trim() };
+                    }
+                }
+                return { ok: false };
+            }
+
+            function setSession(username) {
+                try {
+                    sessionStorage.setItem(LOGIN_SESSION_KEY, JSON.stringify({
+                        u: username,
+                        t: Date.now()
+                    }));
+                } catch (e) {}
+            }
+
+            function clearSession() {
+                try { sessionStorage.removeItem(LOGIN_SESSION_KEY); } catch (e) {}
+            }
+
+            function readSession() {
+                try {
+                    const raw = sessionStorage.getItem(LOGIN_SESSION_KEY);
+                    if (!raw) return null;
+                    const obj = JSON.parse(raw);
+                    if (!obj || !obj.u) return null;
+                    if (obj.t && (Date.now() - obj.t > 12 * 60 * 60 * 1000)) {
+                        clearSession();
+                        return null;
+                    }
+                    return obj;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function showMainApp(username) {
+                if (loginOverlay) loginOverlay.classList.add('hidden');
+                if (mainApp) mainApp.style.display = '';
+                if (loginUserBadge) loginUserBadge.textContent = '👤 ' + username;
+                initTutorialAfterLogin();
+            }
+
+            function showLoginScreen() {
+                if (loginOverlay) loginOverlay.classList.remove('hidden');
+                if (mainApp) mainApp.style.display = 'none';
+                if (loginError) {
+                    loginError.style.display = 'none';
+                    loginError.textContent = '';
+                }
+                if (loginPass) loginPass.value = '';
+                if (loginUser) {
+                    loginUser.value = '';
+                    setTimeout(function () { loginUser.focus(); }, 50);
+                }
+            }
+
+            function attemptLogin(username, password) {
+                const result = validateCredentials(username, password);
+                if (!result.ok) {
+                    if (loginError) {
+                        loginError.textContent = 'Username atau password salah.';
+                        loginError.style.display = 'block';
+                    }
+                    if (loginPass) {
+                        loginPass.value = '';
+                        loginPass.focus();
+                    }
+                    return false;
+                }
+                setSession(result.username);
+                showMainApp(result.username);
+                showToast('✅ Selamat datang, ' + result.username, 'success');
+                return true;
+            }
+
+            (function initAuth() {
+                if (!loginOverlay || !mainApp) return;
+                const users = getUsers();
+                if (users.length === 0) {
+                    showMainApp('guest');
+                    return;
+                }
+                const sess = readSession();
+                if (sess && sess.u) {
+                    const stillValid = users.some(function (r) {
+                        return r && String(r.username || '').trim() === sess.u;
+                    });
+                    if (stillValid) {
+                        showMainApp(sess.u);
+                        return;
+                    }
+                    clearSession();
+                }
+                showLoginScreen();
+            })();
+
+            if (loginForm) {
+                loginForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const u = loginUser ? loginUser.value : '';
+                    const p = loginPass ? loginPass.value : '';
+                    attemptLogin(u, p);
+                });
+            }
+
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function () {
+                    clearSession();
+                    showLoginScreen();
+                    showToast('Anda telah keluar', 'info');
+                });
+            }
 
             // ============================================================
-            // TUTORIAL POPUP
+            // TUTORIAL POPUP (setelah login)
             // ============================================================
-            (function initTutorial() {
+            function initTutorialAfterLogin() {
                 const overlay = document.getElementById('tutorialOverlay');
                 const closeBtn = document.getElementById('tutorialCloseBtn');
                 const dontShow = document.getElementById('tutorialDontShow');
                 if (!overlay || !closeBtn) return;
+                if (overlay.dataset.inited === '1') return;
+                overlay.dataset.inited = '1';
 
                 const STORAGE_KEY = 'mlbb_tutorial_hide';
 
@@ -82,7 +237,7 @@
                         try { localStorage.setItem(STORAGE_KEY, '1'); } catch (e) {}
                     }
                     overlay.classList.remove('show');
-                    setTimeout(() => {
+                    setTimeout(function () {
                         overlay.style.display = 'none';
                     }, 350);
                 }
@@ -102,14 +257,13 @@
 
                 if (shouldShow) {
                     overlay.style.display = 'flex';
-                    // slight delay so animation plays after paint
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => overlay.classList.add('show'));
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(function () { overlay.classList.add('show'); });
                     });
                 } else {
                     overlay.style.display = 'none';
                 }
-            })();
+            }
 
             // ============================================================
             // MENU TABS

@@ -12,13 +12,44 @@
 </head>
 <body>
 
-    <div class="container">
+    <!-- ===================== LOGIN GATE ===================== -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="login-icon">🔐</div>
+                <h1>MLBB Unity Tools</h1>
+                <p>Masuk untuk mengakses tools</p>
+            </div>
+            <form id="loginForm" autocomplete="off">
+                <div class="login-field">
+                    <label for="loginUser">Username</label>
+                    <input type="text" id="loginUser" name="username" placeholder="Masukkan username" required autocomplete="username" />
+                </div>
+                <div class="login-field">
+                    <label for="loginPass">Password</label>
+                    <input type="password" id="loginPass" name="password" placeholder="Masukkan password" required autocomplete="current-password" />
+                </div>
+                <div class="login-error" id="loginError" style="display:none;"></div>
+                <button type="submit" class="btn btn-primary login-btn" id="loginSubmitBtn">Masuk</button>
+            </form>
+            <div class="login-note">
+                Kredensial diatur di file <code>credentials.js</code>.
+                Login bersifat penghalang UI di browser — jangan gunakan password sensitif.
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="mainApp" style="display:none;">
 
         <!-- HEADER -->
         <div class="header">
             <div class="header-left">
                 <h1>MLBB Unity Tools</h1>
                 <p>Hero.bytes Viewer, Document Extractor &amp; GameObject Overrider — Export/Import &amp; Patch Nyata</p>
+            </div>
+            <div class="header-right">
+                <span class="login-user-badge" id="loginUserBadge"></span>
+                <button class="btn btn-sm" id="logoutBtn" title="Keluar">Keluar</button>
             </div>
         </div>
 
@@ -268,6 +299,7 @@
         </div>
     </div>
 
+    <script src="credentials.js"></script>
     <script src="app.js" defer></script>
 </body>
 </html>
