@@ -16,5 +16,5 @@ window.MLBB_USERS = [
     { username: "adminrido", password: "rido",      maxDevices: 3, expiryDate: null },
 
     // Contoh format:
-    // { username: "userbaru", password: "passwordbaru", maxDevices: 2, expiryDate: "2026-12-31" },
+    // { username: "userbaru", password: "passwordbaru", maxDevices: 2, expiryDate: "tahun-bulan-tanggal" },
 ];

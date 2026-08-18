@@ -898,8 +898,8 @@ body {
     margin-top: 8px;
 }
 .admin-card {
-    background: var(--card-bg, #fff);
-    border: 1px solid var(--border-color, #d0d3d8);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 18px 20px;
 }
@@ -907,11 +907,11 @@ body {
     margin: 0 0 14px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary, #1c1e21);
+    color: var(--text-primary);
 }
 .admin-hint {
     font-size: 12px;
-    color: var(--text-secondary, #65676b);
+    color: var(--text-secondary);
     margin: 0 0 12px;
 }
 .admin-form-grid {
@@ -930,6 +930,8 @@ body {
 }
 .admin-table-wrap {
     overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
 }
 .admin-table {
     width: 100%;
@@ -940,23 +942,31 @@ body {
 .admin-table td {
     padding: 10px 12px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color, #e4e6eb);
+    border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
+    color: var(--text-primary);
 }
 .admin-table th {
     font-weight: 600;
-    color: var(--text-secondary, #65676b);
-    background: #f7f8fa;
-    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
+}
+.admin-table tbody tr {
+    background: var(--bg-secondary);
 }
 .admin-table tbody tr:hover {
-    background: #f0f2f5;
+    background: var(--bg-elevated);
+}
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
 }
 .admin-table .pwd-mask {
     font-family: 'SF Mono', Consolas, monospace;
     letter-spacing: 0.04em;
+    color: var(--text-secondary);
 }
 .admin-actions {
     display: flex;
@@ -975,20 +985,20 @@ body {
     font-weight: 600;
 }
 .admin-badge.hardcoded {
-    background: #e7f3ff;
-    color: #1877f2;
+    background: rgba(0, 212, 255, 0.12);
+    color: var(--accent);
 }
 .admin-badge.managed {
-    background: #e6f4ea;
-    color: #137333;
+    background: rgba(0, 200, 151, 0.12);
+    color: var(--success);
 }
 .admin-badge.admin {
-    background: #fce8e6;
-    color: #c5221f;
+    background: rgba(255, 77, 106, 0.15);
+    color: var(--danger);
 }
 .admin-note {
     font-size: 13px;
-    color: var(--text-secondary, #65676b);
+    color: var(--text-secondary);
     line-height: 1.55;
 }
 .admin-note ul {
@@ -999,8 +1009,42 @@ body {
     margin-bottom: 4px;
 }
 .admin-note code {
-    background: #f0f2f5;
-    padding: 1px 5px;
+    background: var(--bg-elevated);
+    color: var(--accent);
+    padding: 1px 6px;
     border-radius: 4px;
     font-size: 12px;
+    border: 1px solid var(--border-color);
+}
+
+/* Admin form inputs (reuse login-field look, ensure dark) */
+#adminApp .login-field input,
+#adminApp .login-field input[type="date"],
+#adminApp .login-field input[type="number"],
+#adminApp .login-field input[type="text"] {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+    color-scheme: dark;
+}
+#adminApp .login-field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+#adminApp .login-field input::placeholder {
+    color: var(--text-muted);
+}
+#adminApp .login-field label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+    letter-spacing: 0.3px;
 }
