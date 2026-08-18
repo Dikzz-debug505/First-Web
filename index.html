@@ -18,7 +18,7 @@
         <div class="header">
             <div class="header-left">
                 <h1>MLBB Unity Tools</h1>
-                <p>Hero.bytes Viewer &amp; Document Extractor — dengan Export/Import &amp; Patch</p>
+                <p>Hero.bytes Viewer, Document Extractor &amp; GameObject Overrider — Export/Import &amp; Patch Nyata</p>
             </div>
         </div>
 
@@ -26,6 +26,7 @@
         <div class="menu-tabs">
             <div class="menu-tab active" data-panel="panel-hero">🧬 Hero.bytes Viewer</div>
             <div class="menu-tab" data-panel="panel-doc">📦 DocumentExtractor</div>
+            <div class="menu-tab" data-panel="panel-go">⚡ GameObject Overrider</div>
         </div>
 
         <!-- ============================================================ -->
@@ -76,7 +77,7 @@
         <div class="menu-panel" id="panel-doc">
 
             <p style="color:#5a4e44; margin-bottom:16px; font-style:italic; font-size:15px; line-height:1.8;">
-                Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML.
+                Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML nyata.
             </p>
 
             <!-- UPLOAD Document.unity3d -->
@@ -148,7 +149,7 @@
                     <input type="file" id="binaryPatchInput" accept=".xml" />
                 </label>
                 <span id="binaryPatchStatus" style="font-size:13px; color:#7a6e64;">belum diupload</span>
-                <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled>🔧 jalankan patch</button>
+                <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled>🔧 jalankan patch nyata</button>
             </div>
 
             <!-- PATCH LOG -->
@@ -158,6 +159,56 @@
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
                 <button class="btn btn-warning" id="docPackBtn" disabled>📦 pack ulang &amp; download</button>
                 <button class="btn" id="docResetBtn" disabled>↺ reset</button>
+            </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- PANEL 3: GAMEOBJECT OVERRIDER & CAB REPLACER                 -->
+        <!-- ============================================================ -->
+        <div class="menu-panel" id="panel-go">
+
+            <p style="color:#5a4e44; margin-bottom:16px; font-style:italic; font-size:15px; line-height:1.8;">
+                Nonaktifkan <strong>GameObject</strong> yang namanya sama dengan file, dan ganti string <strong>CAB</strong> (opsional). Upload 1 file <code>.unity3d</code> saja.
+            </p>
+
+            <div class="upload-zone" id="goDropZone">
+                <div class="upload-icon">⚡</div>
+                <input type="file" id="goFileInput" accept=".unity3d" />
+                <label for="goFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;">pilih file .unity3d</label>
+                <div class="file-name" id="goFileName">upload 1 file .unity3d ke sini</div>
+                <div class="file-size" id="goFileSize"></div>
+            </div>
+
+            <div style="margin:18px 0; background:#faf8f5; padding:16px 22px; border-radius:14px; border:1px solid #e6dfd7;">
+                <label style="font-family:'Segoe UI',sans-serif; font-size:14px; color:#5a4e44; display:block; margin-bottom:8px;">
+                    🔧 CAB Baru (opsional — support karakter spesial, contoh: <code>CAB-©ByLisa</code>)
+                </label>
+                <input type="text" id="goCabInput" placeholder="Kosongkan jika tidak ingin ubah CAB" style="width:100%; max-width:480px; padding:10px 16px; border-radius:30px; border:1px solid #d6cec4; background:#fcfaf7; font-family:'Consolas',monospace; font-size:14px; color:#2c2a28;" />
+                <div style="font-size:13px; color:#7a6e64; margin-top:8px;">Akan dipad ke 36-byte (UTF-8 + null padding). Jika tidak diawali CAB-, otomatis ditambahkan.</div>
+            </div>
+
+            <div class="action-row" style="margin-bottom:16px;">
+                <button class="btn btn-primary" id="goProcessBtn" disabled>⚡ process override</button>
+            </div>
+
+            <div class="progress-wrap" id="goProgressWrap">
+                <div class="progress-bar" id="goProgressBar"></div>
+                <div class="progress-text" id="goProgressText">0%</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item"><span class="label">file</span><span class="value" id="goStatFile">-</span></div>
+                <div class="stat-item"><span class="label">GameObject</span><span class="value" id="goStatGO">-</span></div>
+                <div class="stat-item"><span class="label">CAB diganti</span><span class="value" id="goStatCAB">0</span></div>
+                <div class="stat-item"><span class="label">status</span><span class="value" id="goStatStatus" style="font-size:18px; color:#7a6e64;">siap</span></div>
+            </div>
+
+            <div id="goLog" style="margin:16px 0; padding:14px 18px; background:#faf8f5; border-radius:12px; border:1px solid #e6dfd7; font-family:'Consolas',monospace; font-size:13px; color:#5a4e44; white-space:pre-wrap; min-height:48px; display:none;"></div>
+
+            <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
+                <button class="btn btn-warning" id="goDownloadBtn" disabled>⬇ download hasil</button>
+                <button class="btn" id="goResetBtn" disabled>↺ reset</button>
             </div>
 
         </div>
