@@ -67,9 +67,13 @@
 
             // ============================================================
             // LOGIN GATE (client-side access control + hardening)
+            // + Admin Panel + Device Limit per user
             // ============================================================
             const LOGIN_SESSION_KEY = 'mlbb_auth_session_v2';
             const LOGIN_FAIL_KEY = 'mlbb_login_fail_v1';
+            const MANAGED_USERS_KEY = 'mlbb_managed_users_v1';
+            const DEVICE_ID_KEY = 'mlbb_device_id_v1';
+            const DEVICE_REGISTRY_KEY = 'mlbb_device_registry_v1';
             const MAX_FAIL_ATTEMPTS = 5;
             const LOCKOUT_MS = 60 * 1000;          // 60 detik lock setelah 5 gagal
             const FAIL_DELAY_BASE_MS = 400;        // delay dasar saat gagal
@@ -79,22 +83,168 @@
 
             const loginOverlay = document.getElementById('loginOverlay');
             const mainApp = document.getElementById('mainApp');
+            const adminApp = document.getElementById('adminApp');
             const loginForm = document.getElementById('loginForm');
             const loginUser = document.getElementById('loginUser');
             const loginPass = document.getElementById('loginPass');
             const loginError = document.getElementById('loginError');
             const loginUserBadge = document.getElementById('loginUserBadge');
+            const adminUserBadge = document.getElementById('adminUserBadge');
             const logoutBtn = document.getElementById('logoutBtn');
+            const adminLogoutBtn = document.getElementById('adminLogoutBtn');
             const loginSpinner = document.getElementById('loginSpinner');
             const loginSpinnerText = document.getElementById('loginSpinnerText');
             const loginSubmitBtn = document.getElementById('loginSubmitBtn');
 
             let loginInProgress = false;
+            let currentSessionUser = null;
+            let currentIsAdmin = false;
 
-            function getUsers() {
+            // ---------- Device ID ----------
+            function getOrCreateDeviceId() {
+                try {
+                    let id = localStorage.getItem(DEVICE_ID_KEY);
+                    if (id && typeof id === 'string' && id.length >= 8) return id;
+                    id = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
+                    localStorage.setItem(DEVICE_ID_KEY, id);
+                    return id;
+                } catch (e) {
+                    return 'dev_fallback_' + Date.now();
+                }
+            }
+
+            function readDeviceRegistry() {
+                try {
+                    const raw = localStorage.getItem(DEVICE_REGISTRY_KEY);
+                    if (!raw) return {};
+                    const obj = JSON.parse(raw);
+                    return (obj && typeof obj === 'object') ? obj : {};
+                } catch (e) {
+                    return {};
+                }
+            }
+
+            function writeDeviceRegistry(reg) {
+                try {
+                    localStorage.setItem(DEVICE_REGISTRY_KEY, JSON.stringify(reg || {}));
+                } catch (e) {}
+            }
+
+            function getDevicesForUser(username) {
+                const reg = readDeviceRegistry();
+                const list = reg[String(username || '').trim()] || [];
+                return Array.isArray(list) ? list.filter(Boolean) : [];
+            }
+
+            function setDevicesForUser(username, list) {
+                const reg = readDeviceRegistry();
+                const u = String(username || '').trim();
+                if (!u) return;
+                reg[u] = Array.isArray(list) ? list.filter(Boolean) : [];
+                writeDeviceRegistry(reg);
+            }
+
+            function resetDevicesForUser(username) {
+                setDevicesForUser(username, []);
+            }
+
+            /**
+             * Check / register device for user.
+             * Returns { ok: true } or { ok: false, reason: 'max_devices' }
+             */
+            function checkAndRegisterDevice(username, maxDevices) {
+                if (maxDevices == null || maxDevices === '' || Number(maxDevices) <= 0) {
+                    // unlimited
+                    return { ok: true };
+                }
+                const max = Math.max(1, Math.min(99, Number(maxDevices) || 1));
+                const deviceId = getOrCreateDeviceId();
+                let list = getDevicesForUser(username);
+                if (list.includes(deviceId)) {
+                    return { ok: true };
+                }
+                if (list.length >= max) {
+                    return { ok: false, reason: 'max_devices', current: list.length, max: max };
+                }
+                list = list.concat([deviceId]);
+                setDevicesForUser(username, list);
+                return { ok: true };
+            }
+
+            // ---------- Managed users (localStorage) ----------
+            function readManagedUsers() {
+                try {
+                    const raw = localStorage.getItem(MANAGED_USERS_KEY);
+                    if (!raw) return [];
+                    const arr = JSON.parse(raw);
+                    if (!Array.isArray(arr)) return [];
+                    return arr.filter(function (r) {
+                        return r && typeof r.username === 'string' && r.username.trim();
+                    }).map(function (r) {
+                        return {
+                            username: String(r.username || '').trim(),
+                            password: String(r.password || ''),
+                            maxDevices: r.maxDevices == null || r.maxDevices === '' ? null : Number(r.maxDevices),
+                            expiryDate: r.expiryDate || null,
+                            isAdmin: false,
+                            _source: 'managed'
+                        };
+                    });
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function writeManagedUsers(list) {
+                try {
+                    const clean = (list || []).map(function (r) {
+                        return {
+                            username: String(r.username || '').trim(),
+                            password: String(r.password || ''),
+                            maxDevices: r.maxDevices == null || r.maxDevices === '' ? null : Number(r.maxDevices),
+                            expiryDate: r.expiryDate || null
+                        };
+                    });
+                    localStorage.setItem(MANAGED_USERS_KEY, JSON.stringify(clean));
+                } catch (e) {}
+            }
+
+            function getHardcodedUsers() {
                 const list = window.MLBB_USERS;
                 if (!Array.isArray(list) || list.length === 0) return [];
-                return list;
+                return list.map(function (r) {
+                    return {
+                        username: String(r.username || '').trim(),
+                        password: String(r.password || ''),
+                        maxDevices: r.maxDevices == null || r.maxDevices === '' ? null : Number(r.maxDevices),
+                        expiryDate: r.expiryDate || null,
+                        isAdmin: !!r.isAdmin,
+                        _source: 'hardcoded'
+                    };
+                }).filter(function (r) { return r.username; });
+            }
+
+            /**
+             * Gabungan: hardcoded dulu, lalu managed (skip jika username sudah ada di hardcoded).
+             * Admin hanya dari hardcoded.
+             */
+            function getUsers() {
+                const hard = getHardcodedUsers();
+                const hardNames = {};
+                hard.forEach(function (r) { hardNames[r.username.toLowerCase()] = true; });
+                const managed = readManagedUsers().filter(function (r) {
+                    return !hardNames[r.username.toLowerCase()];
+                });
+                return hard.concat(managed);
+            }
+
+            function getUserByUsername(username) {
+                const u = String(username || '').trim().toLowerCase();
+                const users = getUsers();
+                for (let i = 0; i < users.length; i++) {
+                    if (users[i].username.toLowerCase() === u) return users[i];
+                }
+                return null;
             }
 
             /** Constant-time string compare (anti timing side-channel) */
@@ -153,7 +303,7 @@
                 st.count += 1;
                 if (st.count >= MAX_FAIL_ATTEMPTS) {
                     st.lockUntil = Date.now() + LOCKOUT_MS;
-                    st.count = 0; // reset counter setelah lock
+                    st.count = 0;
                 }
                 writeFailState(st);
                 return st;
@@ -163,7 +313,6 @@
                 const users = getUsers();
                 const u = String(username || '').trim();
                 const p = String(password || '');
-                // Minimal length check (anti trivial empty / short brute)
                 if (u.length < 1 || u.length > 64 || p.length < 1 || p.length > 128) {
                     return { ok: false };
                 }
@@ -181,18 +330,36 @@
                                 return { ok: false, expired: true };
                             }
                         }
-                        return { ok: true, username: String(row.username || '').trim() };
+
+                        // Device limit (skip for admin)
+                        if (!row.isAdmin) {
+                            const devCheck = checkAndRegisterDevice(row.username, row.maxDevices);
+                            if (!devCheck.ok) {
+                                return {
+                                    ok: false,
+                                    maxDevices: true,
+                                    current: devCheck.current,
+                                    max: devCheck.max
+                                };
+                            }
+                        }
+
+                        return {
+                            ok: true,
+                            username: String(row.username || '').trim(),
+                            isAdmin: !!row.isAdmin
+                        };
                     }
                 }
                 return { ok: false };
             }
 
-            function setSession(username) {
+            function setSession(username, isAdmin) {
                 try {
-                    // Token sederhana: username + timestamp + random (bukan crypto, hanya UI gate)
                     const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
                     sessionStorage.setItem(LOGIN_SESSION_KEY, JSON.stringify({
                         u: username,
+                        a: !!isAdmin,
                         t: Date.now(),
                         n: nonce
                     }));
@@ -201,6 +368,8 @@
 
             function clearSession() {
                 try { sessionStorage.removeItem(LOGIN_SESSION_KEY); } catch (e) {}
+                currentSessionUser = null;
+                currentIsAdmin = false;
             }
 
             function readSession() {
@@ -209,7 +378,6 @@
                     if (!raw) return null;
                     const obj = JSON.parse(raw);
                     if (!obj || !obj.u || typeof obj.u !== 'string') return null;
-                    // Session max 12 jam
                     if (obj.t && (Date.now() - obj.t > 12 * 60 * 60 * 1000)) {
                         clearSession();
                         return null;
@@ -250,13 +418,29 @@
             }
 
             function showMainApp(username, skipOverlayHide) {
+                currentSessionUser = username;
+                currentIsAdmin = false;
                 if (mainApp) mainApp.style.display = '';
+                if (adminApp) adminApp.style.display = 'none';
                 if (loginUserBadge) loginUserBadge.textContent = '👤 ' + username;
                 if (!skipOverlayHide && loginOverlay) {
                     loginOverlay.classList.add('hidden');
                     loginOverlay.classList.remove('fade-out');
                 }
                 initTutorialAfterLogin();
+            }
+
+            function showAdminApp(username, skipOverlayHide) {
+                currentSessionUser = username;
+                currentIsAdmin = true;
+                if (mainApp) mainApp.style.display = 'none';
+                if (adminApp) adminApp.style.display = '';
+                if (adminUserBadge) adminUserBadge.textContent = '🛡️ ' + username + ' (Admin)';
+                if (!skipOverlayHide && loginOverlay) {
+                    loginOverlay.classList.add('hidden');
+                    loginOverlay.classList.remove('fade-out');
+                }
+                renderAdminUserTable();
             }
 
             function hideLoginOverlaySmooth(callback) {
@@ -279,6 +463,7 @@
                     loginOverlay.classList.remove('hidden', 'fade-out');
                 }
                 if (mainApp) mainApp.style.display = 'none';
+                if (adminApp) adminApp.style.display = 'none';
                 if (loginError) {
                     loginError.style.display = 'none';
                     loginError.textContent = '';
@@ -286,6 +471,8 @@
                 hideSpinner();
                 setFormDisabled(false);
                 loginInProgress = false;
+                currentSessionUser = null;
+                currentIsAdmin = false;
                 if (loginPass) loginPass.value = '';
                 if (loginUser) {
                     loginUser.value = '';
@@ -312,7 +499,6 @@
                 }
                 showSpinner('Memproses login...');
 
-                // Validasi sinkron, lalu delay artifisial agar UX smooth + anti timing leak ringan
                 const result = validateCredentials(username, password);
 
                 if (!result.ok) {
@@ -327,6 +513,8 @@
                         if (loginError) {
                             if (result.expired) {
                                 loginError.textContent = '❌ Akun sudah kedaluarsa.';
+                            } else if (result.maxDevices) {
+                                loginError.textContent = '📱 Batas device tercapai (' + result.current + '/' + result.max + '). Hubungi admin untuk reset.';
                             } else if (isLockedOut()) {
                                 loginError.textContent = '🔒 Terlalu banyak percobaan gagal. Akun terkunci sementara ' + Math.ceil(LOCKOUT_MS / 1000) + ' detik.';
                             } else {
@@ -344,15 +532,20 @@
                     return false;
                 }
 
-                // === SUCCESS PATH: spinner → checkmark → fade-out smooth ===
+                // === SUCCESS PATH ===
                 clearFailState();
                 setTimeout(function () {
                     showSpinnerSuccess('Berhasil! Mengalihkan...');
                     setTimeout(function () {
-                        setSession(result.username);
+                        setSession(result.username, result.isAdmin);
                         hideLoginOverlaySmooth(function () {
-                            showMainApp(result.username, true);
-                            showToast('✅ Selamat datang, ' + result.username, 'success');
+                            if (result.isAdmin) {
+                                showAdminApp(result.username, true);
+                                showToast('🛡️ Selamat datang Admin, ' + result.username, 'success');
+                            } else {
+                                showMainApp(result.username, true);
+                                showToast('✅ Selamat datang, ' + result.username, 'success');
+                            }
                             loginInProgress = false;
                         });
                     }, SUCCESS_HOLD_MS);
@@ -362,19 +555,32 @@
             }
 
             (function initAuth() {
-                if (!loginOverlay || !mainApp) return;
+                if (!loginOverlay) return;
                 const users = getUsers();
                 if (users.length === 0) {
-                    showMainApp('guest');
+                    if (mainApp) showMainApp('guest');
                     return;
                 }
                 const sess = readSession();
                 if (sess && sess.u) {
-                    const stillValid = users.some(function (r) {
-                        return r && String(r.username || '').trim() === sess.u;
-                    });
-                    if (stillValid) {
-                        showMainApp(sess.u);
+                    const user = getUserByUsername(sess.u);
+                    if (user) {
+                        // re-validate expiry
+                        if (user.expiryDate) {
+                            const expDate = new Date(String(user.expiryDate));
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (!isNaN(expDate.getTime()) && today > expDate) {
+                                clearSession();
+                                showLoginScreen();
+                                return;
+                            }
+                        }
+                        if (user.isAdmin || sess.a) {
+                            showAdminApp(sess.u);
+                        } else {
+                            showMainApp(sess.u);
+                        }
                         return;
                     }
                     clearSession();
@@ -392,11 +598,227 @@
                 });
             }
 
+            function doLogout() {
+                clearSession();
+                showLoginScreen();
+                showToast('Anda telah keluar', 'info');
+            }
+
             if (logoutBtn) {
-                logoutBtn.addEventListener('click', function () {
-                    clearSession();
-                    showLoginScreen();
-                    showToast('Anda telah keluar', 'info');
+                logoutBtn.addEventListener('click', doLogout);
+            }
+            if (adminLogoutBtn) {
+                adminLogoutBtn.addEventListener('click', doLogout);
+            }
+
+            // ============================================================
+            // ADMIN PANEL LOGIC
+            // ============================================================
+            const adminUserForm = document.getElementById('adminUserForm');
+            const adminUsername = document.getElementById('adminUsername');
+            const adminPassword = document.getElementById('adminPassword');
+            const adminMaxDevices = document.getElementById('adminMaxDevices');
+            const adminExpiry = document.getElementById('adminExpiry');
+            const adminEditIndex = document.getElementById('adminEditIndex');
+            const adminSaveBtn = document.getElementById('adminSaveBtn');
+            const adminCancelEditBtn = document.getElementById('adminCancelEditBtn');
+            const adminFormError = document.getElementById('adminFormError');
+            const adminUserTableBody = document.getElementById('adminUserTableBody');
+
+            function maskPassword(pw) {
+                const s = String(pw || '');
+                if (s.length <= 2) return '••';
+                return s.slice(0, 1) + '•'.repeat(Math.min(s.length - 2, 8)) + s.slice(-1);
+            }
+
+            function escapeHtml(s) {
+                return window.escapeHTML ? window.escapeHTML(s) : String(s ?? '')
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            function renderAdminUserTable() {
+                if (!adminUserTableBody) return;
+                const users = getUsers();
+                const rows = [];
+                users.forEach(function (u, idx) {
+                    const isAdminAcc = !!u.isAdmin;
+                    const devices = getDevicesForUser(u.username);
+                    const maxDev = u.maxDevices == null ? '∞' : String(u.maxDevices);
+                    const srcBadge = isAdminAcc
+                        ? '<span class="admin-badge admin">ADMIN</span>'
+                        : (u._source === 'hardcoded'
+                            ? '<span class="admin-badge hardcoded">hardcoded</span>'
+                            : '<span class="admin-badge managed">managed</span>');
+                    const expiryStr = u.expiryDate ? escapeHtml(String(u.expiryDate)) : '—';
+                    let actions = '';
+                    if (isAdminAcc) {
+                        actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
+                    } else {
+                        actions = '<div class="admin-actions">';
+                        if (u._source === 'managed') {
+                            actions += '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>';
+                            actions += '<button type="button" class="btn btn-sm" data-action="delete" data-user="' + escapeHtml(u.username) + '" style="color:#c5221f;">Hapus</button>';
+                        }
+                        actions += '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>';
+                        actions += '</div>';
+                    }
+                    rows.push(
+                        '<tr>' +
+                        '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +
+                        '<td class="pwd-mask" title="' + escapeHtml(u.password) + '">' + escapeHtml(maskPassword(u.password)) + '</td>' +
+                        '<td>' + escapeHtml(maxDev) + '</td>' +
+                        '<td>' + devices.length + (u.maxDevices != null ? ' / ' + u.maxDevices : '') + '</td>' +
+                        '<td>' + expiryStr + '</td>' +
+                        '<td>' + srcBadge + '</td>' +
+                        '<td>' + actions + '</td>' +
+                        '</tr>'
+                    );
+                });
+                adminUserTableBody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">Belum ada user</td></tr>';
+            }
+
+            function showAdminFormError(msg) {
+                if (!adminFormError) return;
+                if (!msg) {
+                    adminFormError.style.display = 'none';
+                    adminFormError.textContent = '';
+                    return;
+                }
+                adminFormError.textContent = msg;
+                adminFormError.style.display = 'block';
+            }
+
+            function resetAdminForm() {
+                if (adminUserForm) adminUserForm.reset();
+                if (adminEditIndex) adminEditIndex.value = '-1';
+                if (adminSaveBtn) adminSaveBtn.textContent = 'Simpan User';
+                if (adminCancelEditBtn) adminCancelEditBtn.style.display = 'none';
+                if (adminUsername) adminUsername.disabled = false;
+                showAdminFormError('');
+            }
+
+            function fillAdminFormForEdit(username) {
+                const u = getUserByUsername(username);
+                if (!u || u.isAdmin) return;
+                if (adminUsername) {
+                    adminUsername.value = u.username;
+                    adminUsername.disabled = true; // username tidak diubah saat edit
+                }
+                if (adminPassword) adminPassword.value = u.password;
+                if (adminMaxDevices) adminMaxDevices.value = u.maxDevices == null ? '' : u.maxDevices;
+                if (adminExpiry) adminExpiry.value = u.expiryDate || '';
+                if (adminEditIndex) adminEditIndex.value = u.username; // pakai username sebagai key
+                if (adminSaveBtn) adminSaveBtn.textContent = 'Update User';
+                if (adminCancelEditBtn) adminCancelEditBtn.style.display = '';
+                showAdminFormError('');
+                if (adminUsername) adminUsername.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            if (adminCancelEditBtn) {
+                adminCancelEditBtn.addEventListener('click', function () {
+                    resetAdminForm();
+                });
+            }
+
+            if (adminUserForm) {
+                adminUserForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    showAdminFormError('');
+                    const uname = adminUsername ? String(adminUsername.value || '').trim() : '';
+                    const pass = adminPassword ? String(adminPassword.value || '') : '';
+                    const maxDevRaw = adminMaxDevices ? adminMaxDevices.value : '';
+                    const maxDev = maxDevRaw === '' || maxDevRaw == null ? null : Math.max(1, Math.min(99, parseInt(maxDevRaw, 10) || 1));
+                    const exp = adminExpiry && adminExpiry.value ? adminExpiry.value : null;
+                    const editKey = adminEditIndex ? String(adminEditIndex.value || '') : '-1';
+
+                    if (!uname || uname.length < 1 || uname.length > 64) {
+                        showAdminFormError('Username wajib diisi (1–64 karakter).');
+                        return;
+                    }
+                    if (!pass || pass.length < 1 || pass.length > 128) {
+                        showAdminFormError('Password wajib diisi (1–128 karakter).');
+                        return;
+                    }
+
+                    // Jangan izinkan membuat/edit jadi admin
+                    const existing = getUserByUsername(uname);
+                    if (existing && existing.isAdmin) {
+                        showAdminFormError('Tidak bisa mengubah akun admin khusus.');
+                        return;
+                    }
+
+                    const managed = readManagedUsers();
+                    const hard = getHardcodedUsers();
+                    const hardNames = {};
+                    hard.forEach(function (r) { hardNames[r.username.toLowerCase()] = r; });
+
+                    // Hanya managed users yang bisa di-edit/tambah/hapus lewat panel.
+                    // User hardcoded ubah lewat credentials.js. Reset Device tetap tersedia untuk semua.
+
+                    if (editKey && editKey !== '-1') {
+                        const idx = managed.findIndex(function (r) {
+                            return r.username.toLowerCase() === editKey.toLowerCase();
+                        });
+                        if (idx < 0) {
+                            showAdminFormError('User hardcoded hanya bisa diubah lewat credentials.js. Panel ini untuk user managed.');
+                            return;
+                        }
+                        managed[idx].password = pass;
+                        managed[idx].maxDevices = maxDev;
+                        managed[idx].expiryDate = exp;
+                        writeManagedUsers(managed);
+                        showToast('✅ User diperbarui', 'success');
+                    } else {
+                        if (hardNames[uname.toLowerCase()] || managed.some(function (r) {
+                            return r.username.toLowerCase() === uname.toLowerCase();
+                        })) {
+                            showAdminFormError('Username sudah dipakai.');
+                            return;
+                        }
+                        managed.push({
+                            username: uname,
+                            password: pass,
+                            maxDevices: maxDev,
+                            expiryDate: exp
+                        });
+                        writeManagedUsers(managed);
+                        showToast('✅ User baru ditambahkan', 'success');
+                    }
+
+                    resetAdminForm();
+                    renderAdminUserTable();
+                });
+            }
+
+            if (adminUserTableBody) {
+                adminUserTableBody.addEventListener('click', function (e) {
+                    const btn = e.target.closest('button[data-action]');
+                    if (!btn) return;
+                    const action = btn.getAttribute('data-action');
+                    const uname = btn.getAttribute('data-user');
+                    if (!uname) return;
+
+                    if (action === 'edit') {
+                        fillAdminFormForEdit(uname);
+                    } else if (action === 'reset-device') {
+                        if (confirm('Reset semua device untuk user "' + uname + '"?\nSetelah reset, user bisa login lagi dari device baru (sampai batas max).')) {
+                            resetDevicesForUser(uname);
+                            renderAdminUserTable();
+                            showToast('Device di-reset untuk ' + uname, 'success');
+                        }
+                    } else if (action === 'delete') {
+                        if (confirm('Hapus user managed "' + uname + '"?')) {
+                            const managed = readManagedUsers().filter(function (r) {
+                                return r.username.toLowerCase() !== uname.toLowerCase();
+                            });
+                            writeManagedUsers(managed);
+                            resetDevicesForUser(uname);
+                            renderAdminUserTable();
+                            showToast('User dihapus', 'info');
+                            if (adminEditIndex && adminEditIndex.value === uname) resetAdminForm();
+                        }
+                    }
                 });
             }
 

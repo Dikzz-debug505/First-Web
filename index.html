@@ -37,9 +37,9 @@
                 </div>
             </form>
             <div class="login-note">
-                Kredensial diatur di file <code>credentials.js</code>.
-                Dilindungi rate-limit &amp; lockout anti-brute-force (client-side).
-                Jangan gunakan password sensitif — ini hanya penghalang UI.
+                Kredensial diatur di <code>credentials.js</code> + Admin Panel.
+                Akun khusus <strong>master</strong> untuk mengelola user &amp; batas device.
+                Dilindungi rate-limit &amp; lockout (client-side).
             </div>
         </div>
     </div>
@@ -251,6 +251,85 @@
 
         <!-- FOOTER -->
         <div class="footer">semua proses di sini, tidak ada data yang dikirim ke mana pun</div>
+    </div>
+
+
+    <!-- ===================== ADMIN PANEL ===================== -->
+    <div class="container" id="adminApp" style="display:none;">
+        <div class="header">
+            <div class="header-left">
+                <h1>⚙️ Admin Panel</h1>
+                <p>Kelola Username, Password, Expiry &amp; Batas Device</p>
+            </div>
+            <div class="header-right">
+                <span class="login-user-badge" id="adminUserBadge"></span>
+                <button class="btn btn-sm" id="adminLogoutBtn" title="Keluar">Keluar</button>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <div class="admin-card">
+                <h2>➕ Tambah / Edit User</h2>
+                <form id="adminUserForm" autocomplete="off">
+                    <input type="hidden" id="adminEditIndex" value="-1" />
+                    <div class="admin-form-grid">
+                        <div class="login-field">
+                            <label for="adminUsername">Username</label>
+                            <input type="text" id="adminUsername" required maxlength="64" placeholder="username" />
+                        </div>
+                        <div class="login-field">
+                            <label for="adminPassword">Password</label>
+                            <input type="text" id="adminPassword" required maxlength="128" placeholder="password" />
+                        </div>
+                        <div class="login-field">
+                            <label for="adminMaxDevices">Max Device (kosong = unlimited)</label>
+                            <input type="number" id="adminMaxDevices" min="1" max="99" placeholder="contoh: 2" />
+                        </div>
+                        <div class="login-field">
+                            <label for="adminExpiry">Tanggal Kedaluarsa (opsional)</label>
+                            <input type="date" id="adminExpiry" />
+                        </div>
+                    </div>
+                    <div class="admin-form-actions">
+                        <button type="submit" class="btn btn-primary" id="adminSaveBtn">Simpan User</button>
+                        <button type="button" class="btn" id="adminCancelEditBtn" style="display:none;">Batal Edit</button>
+                    </div>
+                </form>
+                <div class="login-error" id="adminFormError" style="display:none; margin-top:10px;"></div>
+            </div>
+
+            <div class="admin-card">
+                <h2>👥 Daftar User</h2>
+                <p class="admin-hint">User hardcoded di <code>credentials.js</code> + user yang dikelola di sini (disimpan di localStorage browser ini).</p>
+                <div class="admin-table-wrap">
+                    <table class="admin-table" id="adminUserTable">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Password</th>
+                                <th>Max Device</th>
+                                <th>Device Aktif</th>
+                                <th>Expiry</th>
+                                <th>Sumber</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUserTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="admin-card admin-note">
+                <strong>Catatan penting:</strong>
+                <ul>
+                    <li>Akun <code>master</code> adalah admin khusus dan tidak bisa dihapus/diubah lewat panel ini.</li>
+                    <li>Batas device disimpan di localStorage browser ini. Setiap browser/device punya storage sendiri, jadi batas bersifat lokal per browser.</li>
+                    <li>Untuk reset device suatu user, klik tombol "Reset Device" di tabel.</li>
+                    <li>User yang ditambahkan di panel ini hanya tersimpan di browser ini (localStorage). Untuk permanen, salin ke <code>credentials.js</code>.</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <!-- TOAST -->
