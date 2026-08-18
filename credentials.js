@@ -3,8 +3,8 @@ window.MLBB_USERS = [
     // Username & Password ini HANYA untuk membuat/mengatur user lain + set batas device.
     // Jangan bagikan ke user biasa.
     {
-        username: "master",
-        password: "master2026",
+        username: "adi",
+        password: "ilyas",
         isAdmin: true,
         maxDevices: 1,   // null = unlimited
         expiryDate: null
@@ -16,5 +16,5 @@ window.MLBB_USERS = [
     { username: "adminrido", password: "rido",      maxDevices: 3, expiryDate: null },
 
     // Contoh format:
-    // { username: "userbaru", password: "passwordbaru", maxDevices: 2, expiryDate: "tahun-bulan-tanggal" },
+    // { username: "userbaru", password: "passwordbaru", maxDevices: 2, expiryDate: "2026-12-31" },
 ];
