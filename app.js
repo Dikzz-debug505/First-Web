@@ -106,6 +106,17 @@
                     if (!row) continue;
                     if (timingSafeEqual(String(row.username || '').trim(), u) &&
                         timingSafeEqual(String(row.password || ''), p)) {
+                        
+                        // Check expiry date
+                        if (row.expiryDate) {
+                            const expDate = new Date(String(row.expiryDate));
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (today > expDate) {
+                                return { ok: false, expired: true };
+                            }
+                        }
+                        
                         return { ok: true, username: String(row.username || '').trim() };
                     }
                 }
@@ -163,10 +174,26 @@
             }
 
             function attemptLogin(username, password) {
+                const loginSpinner = document.getElementById('loginSpinner');
+                const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+                
+                // Show loading spinner
+                if (loginSubmitBtn) loginSubmitBtn.style.display = 'none';
+                if (loginSpinner) loginSpinner.style.display = 'flex';
+                
                 const result = validateCredentials(username, password);
+                
                 if (!result.ok) {
+                    // Hide spinner, show error
+                    if (loginSpinner) loginSpinner.style.display = 'none';
+                    if (loginSubmitBtn) loginSubmitBtn.style.display = 'block';
+                    
                     if (loginError) {
-                        loginError.textContent = 'Username atau password salah.';
+                        if (result.expired) {
+                            loginError.textContent = '❌ Akun sudah kedaluarsa.';
+                        } else {
+                            loginError.textContent = 'Username atau password salah.';
+                        }
                         loginError.style.display = 'block';
                     }
                     if (loginPass) {
@@ -175,9 +202,17 @@
                     }
                     return false;
                 }
-                setSession(result.username);
-                showMainApp(result.username);
-                showToast('✅ Selamat datang, ' + result.username, 'success');
+                
+                // Simulate loading time (500ms) untuk smooth animation
+                setTimeout(function() {
+                    setSession(result.username);
+                    showMainApp(result.username);
+                    showToast('✅ Selamat datang, ' + result.username, 'success');
+                    // Reset button
+                    if (loginSpinner) loginSpinner.style.display = 'none';
+                    if (loginSubmitBtn) loginSubmitBtn.style.display = 'block';
+                }, 500);
+                
                 return true;
             }
 
