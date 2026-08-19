@@ -1,7 +1,0 @@
-node_modules/
-.env
-*.unity3d
-*.bytes
-*.bin
-*.zip
-.DS_Store
