@@ -6,7 +6,7 @@ window.MLBB_USERS = [
         username: "master",
         password: "master2026",
         isAdmin: true,
-        maxDevices: 1,   // null = unlimited
+        maxDevices: null,   // null = unlimited
         expiryDate: null
     },
 

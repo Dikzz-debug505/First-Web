@@ -66,79 +66,95 @@
             }
 
             // ============================================================
-            // BACKGROUND MUSIC TOGGLE
+            // BACKGROUND MUSIC TOGGLE + AUTOPLAY
             // ============================================================
-            (function initBgm() {
-                const audio = document.getElementById('bgmAudio');
+            const MUSIC_PREF_KEY = 'mlbb_bgm_enabled';
+            let bgmIsPlaying = false;
+
+            function bgmUpdateBtn() {
                 const btn = document.getElementById('musicToggleBtn');
-                if (!audio || !btn) return;
-
-                const MUSIC_PREF_KEY = 'mlbb_bgm_enabled';
-                let isPlaying = false;
-
-                function updateBtn() {
-                    if (isPlaying) {
-                        btn.textContent = '🔊 Musik';
-                        btn.classList.add('playing');
-                        btn.title = 'Matikan Musik';
-                    } else {
-                        btn.textContent = '🔇 Musik';
-                        btn.classList.remove('playing');
-                        btn.title = 'Hidupkan Musik';
-                    }
+                if (!btn) return;
+                if (bgmIsPlaying) {
+                    btn.textContent = '🔊 Musik';
+                    btn.classList.add('playing');
+                    btn.title = 'Matikan Musik';
+                } else {
+                    btn.textContent = '🔇 Musik';
+                    btn.classList.remove('playing');
+                    btn.title = 'Hidupkan Musik';
                 }
+            }
 
-                function playMusic() {
-                    audio.volume = 0.35;
-                    const p = audio.play();
-                    if (p && typeof p.then === 'function') {
-                        p.then(() => {
-                            isPlaying = true;
-                            localStorage.setItem(MUSIC_PREF_KEY, '1');
-                            updateBtn();
-                        }).catch(() => {
-                            // Autoplay blocked — user must click
-                            isPlaying = false;
-                            updateBtn();
-                        });
-                    } else {
-                        isPlaying = true;
+            function bgmPlay(silent) {
+                const audio = document.getElementById('bgmAudio');
+                if (!audio) return;
+                // Hormati preferensi user: jika pernah dimatikan manual, jangan paksa
+                if (localStorage.getItem(MUSIC_PREF_KEY) === '0') return;
+                audio.volume = 0.35;
+                const p = audio.play();
+                if (p && typeof p.then === 'function') {
+                    p.then(() => {
+                        bgmIsPlaying = true;
                         localStorage.setItem(MUSIC_PREF_KEY, '1');
-                        updateBtn();
-                    }
+                        bgmUpdateBtn();
+                    }).catch(() => {
+                        // Browser blok autoplay — tunggu interaksi user
+                        bgmIsPlaying = false;
+                        bgmUpdateBtn();
+                    });
+                } else {
+                    bgmIsPlaying = true;
+                    localStorage.setItem(MUSIC_PREF_KEY, '1');
+                    bgmUpdateBtn();
                 }
+            }
 
-                function stopMusic() {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    isPlaying = false;
-                    localStorage.setItem(MUSIC_PREF_KEY, '0');
-                    updateBtn();
-                }
+            function bgmStop() {
+                const audio = document.getElementById('bgmAudio');
+                if (!audio) return;
+                audio.pause();
+                audio.currentTime = 0;
+                bgmIsPlaying = false;
+                localStorage.setItem(MUSIC_PREF_KEY, '0');
+                bgmUpdateBtn();
+            }
+
+            (function initBgm() {
+                const btn = document.getElementById('musicToggleBtn');
+                if (!btn) return;
 
                 btn.addEventListener('click', function () {
-                    if (isPlaying) {
-                        stopMusic();
+                    if (bgmIsPlaying) {
+                        bgmStop();
                         showToast('🔇 Musik dimatikan', 'info');
                     } else {
-                        playMusic();
+                        // Paksa on meski preferensi sebelumnya off
+                        localStorage.setItem(MUSIC_PREF_KEY, '1');
+                        bgmPlay();
                         showToast('🔊 Musik dihidupkan', 'success');
                     }
                 });
 
-                // Restore preference (but do not autoplay until user interaction if blocked)
-                if (localStorage.getItem(MUSIC_PREF_KEY) === '1') {
-                    // Try soft resume after first user gesture anywhere
-                    const resumeOnce = function () {
-                        document.removeEventListener('click', resumeOnce, true);
-                        if (localStorage.getItem(MUSIC_PREF_KEY) === '1' && !isPlaying) {
-                            playMusic();
-                        }
-                    };
-                    document.addEventListener('click', resumeOnce, true);
+                // Default: musik ON (kecuali user pernah matikan)
+                if (localStorage.getItem(MUSIC_PREF_KEY) !== '0') {
+                    localStorage.setItem(MUSIC_PREF_KEY, '1');
                 }
 
-                updateBtn();
+                bgmUpdateBtn();
+
+                // Coba autoplay segera (sering diblok sebelum interaksi)
+                bgmPlay(true);
+
+                // Fallback: putar setelah interaksi pertama di halaman
+                const resumeOnce = function () {
+                    document.removeEventListener('click', resumeOnce, true);
+                    document.removeEventListener('keydown', resumeOnce, true);
+                    if (!bgmIsPlaying && localStorage.getItem(MUSIC_PREF_KEY) !== '0') {
+                        bgmPlay(true);
+                    }
+                };
+                document.addEventListener('click', resumeOnce, true);
+                document.addEventListener('keydown', resumeOnce, true);
             })();
 
             // ============================================================
@@ -504,6 +520,8 @@
                     loginOverlay.classList.remove('fade-out');
                 }
                 initTutorialAfterLogin();
+                // Autoplay musik setelah login (klik login = user gesture → biasanya diizinkan browser)
+                bgmPlay(true);
             }
 
             function showAdminApp(username, skipOverlayHide) {
