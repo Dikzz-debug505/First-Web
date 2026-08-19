@@ -2155,12 +2155,220 @@
             }
 
             /**
-             * Unity GameObject patcher (multi-layout + name variants).
+             * Minimal LZ4 block decompressor (Unity AssetBundle compatible).
+             */
+            function lz4DecompressBlock(src, uncompressedSize) {
+                const dst = new Uint8Array(uncompressedSize);
+                let s = 0, d = 0;
+                const sLen = src.length;
+                while (s < sLen && d < uncompressedSize) {
+                    const token = src[s++];
+                    let litLen = token >>> 4;
+                    if (litLen === 15) {
+                        let b;
+                        do { if (s >= sLen) break; b = src[s++]; litLen += b; } while (b === 255);
+                    }
+                    for (let i = 0; i < litLen && s < sLen && d < uncompressedSize; i++) dst[d++] = src[s++];
+                    if (s >= sLen || d >= uncompressedSize) break;
+                    if (s + 2 > sLen) break;
+                    const offset = src[s++] | (src[s++] << 8);
+                    if (offset === 0 || offset > d) throw new Error('LZ4 bad offset ' + offset);
+                    let matchLen = (token & 0xf) + 4;
+                    if ((token & 0xf) === 15) {
+                        let b;
+                        do { if (s >= sLen) break; b = src[s++]; matchLen += b; } while (b === 255);
+                    }
+                    let mPos = d - offset;
+                    for (let i = 0; i < matchLen && d < uncompressedSize; i++) dst[d++] = dst[mPos++];
+                }
+                return dst;
+            }
+
+            function readCString(data, off) {
+                let end = off;
+                while (end < data.length && data[end] !== 0) end++;
+                return { str: new TextDecoder().decode(data.subarray(off, end)), next: end + 1 };
+            }
+
+            function readU32BE(data, p) {
+                return ((data[p] << 24) | (data[p + 1] << 16) | (data[p + 2] << 8) | data[p + 3]) >>> 0;
+            }
+            function readU64BE(data, p) {
+                // JS safe for sizes we care about (< 2^53)
+                const hi = readU32BE(data, p);
+                const lo = readU32BE(data, p + 4);
+                return hi * 0x100000000 + lo;
+            }
+            function writeU32BE(arr, p, v) {
+                arr[p] = (v >>> 24) & 0xff;
+                arr[p + 1] = (v >>> 16) & 0xff;
+                arr[p + 2] = (v >>> 8) & 0xff;
+                arr[p + 3] = v & 0xff;
+            }
+            function writeU64BE(arr, p, v) {
+                const hi = Math.floor(v / 0x100000000);
+                const lo = v >>> 0;
+                writeU32BE(arr, p, hi);
+                writeU32BE(arr, p + 4, lo);
+            }
+
+            /**
+             * Parse & decompress UnityFS AssetBundle → raw block bytes.
+             * Returns null if not UnityFS / unsupported.
+             */
+            function unityFsUnpack(fileData) {
+                if (fileData.length < 20) return null;
+                const magic = new TextDecoder().decode(fileData.subarray(0, 7));
+                if (magic !== 'UnityFS') return null;
+
+                let off = 8;
+                const format = readU32BE(fileData, off); off += 4;
+                const uver = readCString(fileData, off); off = uver.next;
+                const gver = readCString(fileData, off); off = gver.next;
+                const fileSize = readU64BE(fileData, off); off += 8;
+                const cBlocksInfoSize = readU32BE(fileData, off); off += 4;
+                const uBlocksInfoSize = readU32BE(fileData, off); off += 4;
+                const flags = readU32BE(fileData, off); off += 4;
+
+                const compression = flags & 0x3f;
+                // Align to 16 if needed (BlockInfoNeedPaddingAtStart = 0x200)
+                if (flags & 0x200) {
+                    if (off % 16) off += 16 - (off % 16);
+                } else if (off % 16) {
+                    // Many Unity 2019 bundles still align blocks info to 16
+                    off += 16 - (off % 16);
+                }
+
+                if (off + cBlocksInfoSize > fileData.length) return null;
+                const blocksInfoC = fileData.subarray(off, off + cBlocksInfoSize);
+                let blocksInfo;
+                if (compression === 0) {
+                    blocksInfo = blocksInfoC;
+                } else if (compression === 2 || compression === 3) {
+                    blocksInfo = lz4DecompressBlock(blocksInfoC, uBlocksInfoSize);
+                } else {
+                    throw new Error('UnityFS: unsupported blocksInfo compression ' + compression);
+                }
+
+                let bio = 16; // skip GUID
+                const numBlocks = readU32BE(blocksInfo, bio); bio += 4;
+                const blocks = [];
+                for (let i = 0; i < numBlocks; i++) {
+                    const uSize = readU32BE(blocksInfo, bio);
+                    const cSize = readU32BE(blocksInfo, bio + 4);
+                    const bFlags = (blocksInfo[bio + 8] << 8) | blocksInfo[bio + 9];
+                    bio += 10;
+                    blocks.push({ uSize: uSize, cSize: cSize, flags: bFlags, entryOff: 16 + 4 + i * 10 });
+                }
+
+                const dataStart = off + cBlocksInfoSize;
+                let pos = dataStart;
+                const rawParts = [];
+                const origChunks = [];
+                for (let i = 0; i < blocks.length; i++) {
+                    const b = blocks[i];
+                    const chunk = fileData.subarray(pos, pos + b.cSize);
+                    pos += b.cSize;
+                    origChunks.push(chunk);
+                    const bComp = b.flags & 0x3f;
+                    let part;
+                    if (bComp === 0) {
+                        part = new Uint8Array(chunk);
+                    } else if (bComp === 2 || bComp === 3) {
+                        part = lz4DecompressBlock(chunk, b.uSize);
+                    } else {
+                        throw new Error('UnityFS: unsupported block compression ' + bComp);
+                    }
+                    rawParts.push(part);
+                }
+
+                return {
+                    format: format,
+                    uver: uver.str,
+                    gver: gver.str,
+                    flags: flags,
+                    blocksInfo: new Uint8Array(blocksInfo),
+                    blocks: blocks,
+                    rawParts: rawParts,
+                    origChunks: origChunks
+                };
+            }
+
+            /**
+             * Rebuild UnityFS. Modified blocks stored uncompressed (flags=0)
+             * so we don't need an LZ4 compressor. Unmodified blocks keep original bytes.
+             */
+            function unityFsRepack(unpacked, modifiedBlockFlags) {
+                const blocks = unpacked.blocks;
+                const newBlockDataParts = [];
+                let totalBlockBytes = 0;
+                for (let i = 0; i < blocks.length; i++) {
+                    if (modifiedBlockFlags[i]) {
+                        const part = unpacked.rawParts[i];
+                        blocks[i].uSize = part.length;
+                        blocks[i].cSize = part.length;
+                        blocks[i].flags = 0; // uncompressed
+                        newBlockDataParts.push(part);
+                        totalBlockBytes += part.length;
+                        // update blocksInfo entry
+                        const eo = blocks[i].entryOff;
+                        writeU32BE(unpacked.blocksInfo, eo, part.length);
+                        writeU32BE(unpacked.blocksInfo, eo + 4, part.length);
+                        unpacked.blocksInfo[eo + 8] = 0;
+                        unpacked.blocksInfo[eo + 9] = 0;
+                    } else {
+                        const chunk = unpacked.origChunks[i];
+                        newBlockDataParts.push(chunk);
+                        totalBlockBytes += chunk.length;
+                    }
+                }
+
+                // Recompress blocksInfo with... keep as uncompressed if we can't LZ4 compress.
+                // For simplicity store blocksInfo uncompressed and clear compression bits.
+                // flags low 6 bits = compression of blocksInfo.
+                let newFlags = (unpacked.flags & ~0x3f) | 0; // no compression on blocksInfo
+                // Keep BlocksAndDirectoryInfoCombined etc.
+
+                const biRaw = unpacked.blocksInfo;
+                const biC = biRaw; // uncompressed
+
+                // Build header
+                const enc = new TextEncoder();
+                const magic = enc.encode('UnityFS\0');
+                const uverB = enc.encode(unpacked.uver + '\0');
+                const gverB = enc.encode(unpacked.gver + '\0');
+
+                // Compute size: magic(8) + format(4) + uver + gver + size(8)+cbi(4)+ubi(4)+flags(4) + pad + bi + blocks
+                let headerLen = 8 + 4 + uverB.length + gverB.length + 8 + 4 + 4 + 4;
+                let pad = (16 - (headerLen % 16)) % 16;
+                const totalSize = headerLen + pad + biC.length + totalBlockBytes;
+
+                const out = new Uint8Array(totalSize);
+                let o = 0;
+                out.set(magic, o); o = 8;
+                writeU32BE(out, o, unpacked.format); o += 4;
+                out.set(uverB, o); o += uverB.length;
+                out.set(gverB, o); o += gverB.length;
+                writeU64BE(out, o, totalSize); o += 8;
+                writeU32BE(out, o, biC.length); o += 4;
+                writeU32BE(out, o, biRaw.length); o += 4;
+                writeU32BE(out, o, newFlags); o += 4;
+                o += pad; // zeros already
+                out.set(biC, o); o += biC.length;
+                for (let i = 0; i < newBlockDataParts.length; i++) {
+                    out.set(newBlockDataParts[i], o);
+                    o += newBlockDataParts[i].length;
+                }
+                return out;
+            }
+
+            /**
+             * Unity GameObject patcher (multi-layout + name variants + UnityFS).
              *
-             * After length-prefixed m_Name (4-byte aligned), remaining fields vary:
-             *   tag int32 / uint16 → m_Icon (PPtr 8/12) → nav → flags → m_IsActive
-             * Common active offsets from end of name: +20, +18, +22, +16, +24…
-             * Also tries filename variants (underscore ↔ no underscore / space).
+             * Layouts after aligned m_Name:
+             *   A) tag uint16 + m_IsActive          → active @ +2   (common 2019+ stripped)
+             *   B) tag int32 + icon(8) + nav + flags + active → @ +20
+             *   C) other offsets +18/+16/+22…
              */
             function readI32LE(data, p) {
                 if (p < 0 || p + 4 > data.length) return null;
@@ -2184,9 +2392,14 @@
                 return true;
             }
 
-            const GO_ACTIVE_OFFSETS = [20, 18, 22, 16, 24, 12, 28, 8];
+            // +2 first: tag uint16 + active (Unity 2019 GameObject stripped type tree)
+            const GO_ACTIVE_OFFSETS = [2, 20, 18, 22, 16, 24, 12, 28, 8, 4, 3];
 
-            function tryPatchGameObjectAt(data, after) {
+            function tryPatchGameObjectAt(data, after, namePos) {
+                // m_Layer sits just before the name length field for real GameObjects
+                const layer = (namePos >= 4) ? readI32LE(data, namePos - 4) : null;
+                const layerOk = layer !== null && layer >= 0 && layer <= 31;
+
                 for (let oi = 0; oi < GO_ACTIVE_OFFSETS.length; oi++) {
                     const off = GO_ACTIVE_OFFSETS[oi];
                     const activePos = after + off;
@@ -2194,6 +2407,15 @@
 
                     const active = data[activePos];
                     if (active !== 0 && active !== 1) continue;
+
+                    // Layout stripped: tag uint16 @0, active @2 — require valid m_Layer
+                    if (off === 2 || off === 3 || off === 4) {
+                        const tag16 = readU16LE(data, after);
+                        if (tag16 !== null && tag16 <= 10000 && layerOk) {
+                            return { activePos: activePos, active: active, layout: 'tag16-short@' + off };
+                        }
+                        continue;
+                    }
 
                     // Layout A: tag int32 @0, nav @12 (active usually @20)
                     if (off === 20 || off === 16 || off === 24 || off === 28) {
@@ -2266,14 +2488,19 @@
                         let after = pos + 4 + vLen;
                         while (after % 4 !== 0) after++;
 
-                        let hit = tryPatchGameObjectAt(data, after);
-                        // Force fallback: if structured checks fail, still accept
-                        // active byte 0/1 at the most common offsets (+20 / +18).
+                        let hit = tryPatchGameObjectAt(data, after, pos);
+                        // Force fallback for common offsets including short tag16 layout (+2)
                         if (!hit) {
-                            for (let fi = 0; fi < 2; fi++) {
-                                const fOff = fi === 0 ? 20 : 18;
+                            const forceOffs = [2, 20, 18, 4];
+                            for (let fi = 0; fi < forceOffs.length; fi++) {
+                                const fOff = forceOffs[fi];
                                 const fPos = after + fOff;
                                 if (fPos < data.length && (data[fPos] === 0 || data[fPos] === 1)) {
+                                    // For +2 require m_Layer-like value before name
+                                    if (fOff <= 4) {
+                                        const layer = pos >= 4 ? readI32LE(data, pos - 4) : null;
+                                        if (layer === null || layer < 0 || layer > 31) continue;
+                                    }
                                     hit = { activePos: fPos, active: data[fPos], layout: 'force@' + fOff };
                                     break;
                                 }
@@ -2413,21 +2640,72 @@
 
                 setTimeout(function () {
                     try {
-                        const data = new Uint8Array(goRaw); // copy
+                        const targetName = (goTargetInput.value || goFileBaseName).trim();
+                        const cabBytes = prepareCabBytes(goCabInput.value);
+                        let goResult = { disabled: false, count: 0, candidates: 0, details: [] };
+                        let cabResult = { replaced: false, count: 0 };
+                        let resultBytes = null;
+                        let unityFsNote = '';
+
+                        // Detect UnityFS AssetBundle (compressed)
+                        let unpacked = null;
+                        try {
+                            unpacked = unityFsUnpack(goRaw);
+                        } catch (ufsErr) {
+                            console.warn('UnityFS unpack:', ufsErr);
+                            unpacked = null;
+                        }
+
                         goProgressBar.style.width = '30%';
                         goProgressText.textContent = '30%';
 
-                        // 1) GameObject override
-                        const targetName = (goTargetInput.value || goFileBaseName).trim();
-                        const goResult = disableGameObjectByName(data, targetName);
-                        goProgressBar.style.width = '60%';
-                        goProgressText.textContent = '60%';
+                        if (unpacked) {
+                            unityFsNote = 'UnityFS ' + unpacked.uver + ' / ' + unpacked.gver +
+                                ' (' + unpacked.rawParts.length + ' blocks decompressed)';
+                            const modifiedBlocks = [];
+                            for (let bi = 0; bi < unpacked.rawParts.length; bi++) {
+                                modifiedBlocks[bi] = false;
+                            }
 
-                        // 2) CAB replace (optional)
-                        const cabBytes = prepareCabBytes(goCabInput.value);
-                        let cabResult = { replaced: false, count: 0 };
-                        if (cabBytes) {
-                            cabResult = replaceCabStrings(data, cabBytes);
+                            // Patch each decompressed block for GameObject + CAB
+                            for (let bi = 0; bi < unpacked.rawParts.length; bi++) {
+                                const part = unpacked.rawParts[bi];
+                                const partGo = disableGameObjectByName(part, targetName);
+                                if (partGo.disabled || (partGo.details && partGo.details.length)) {
+                                    goResult.disabled = goResult.disabled || partGo.disabled;
+                                    goResult.count += partGo.count;
+                                    goResult.candidates += partGo.candidates;
+                                    if (partGo.details) {
+                                        for (let di = 0; di < partGo.details.length; di++) {
+                                            goResult.details.push('[block' + bi + '] ' + partGo.details[di]);
+                                        }
+                                    }
+                                    if (partGo.disabled) modifiedBlocks[bi] = true;
+                                }
+                                if (cabBytes) {
+                                    const partCab = replaceCabStrings(part, cabBytes);
+                                    if (partCab.replaced) {
+                                        cabResult.replaced = true;
+                                        cabResult.count += partCab.count;
+                                        modifiedBlocks[bi] = true;
+                                    }
+                                }
+                            }
+
+                            goProgressBar.style.width = '70%';
+                            goProgressText.textContent = '70%';
+
+                            if (goResult.disabled || cabResult.replaced) {
+                                resultBytes = unityFsRepack(unpacked, modifiedBlocks);
+                            }
+                        } else {
+                            // Raw / uncompressed serialized asset
+                            const data = new Uint8Array(goRaw);
+                            goResult = disableGameObjectByName(data, targetName);
+                            if (cabBytes) cabResult = replaceCabStrings(data, cabBytes);
+                            if (goResult.disabled || cabResult.replaced || goResult.candidates > 0) {
+                                resultBytes = data;
+                            }
                         }
 
                         goProgressBar.style.width = '90%';
@@ -2443,9 +2721,9 @@
                             const failLines = [
                                 'GameObject "' + targetName + '" maupun String CAB tidak ditemukan.',
                                 'Coba isi Nama GameObject Target secara manual.',
-                                'Tool juga mencoba varian: tanpa underscore / spasi.',
-                                'Jika tetap gagal, asset mungkin terkompresi atau layout Unity sangat berbeda.'
+                                'Tool juga mencoba varian: tanpa underscore / spasi.'
                             ];
+                            if (unityFsNote) failLines.push('[INFO] ' + unityFsNote);
                             if (goResult.details && goResult.details.length) {
                                 failLines.push('--- detail scan ---');
                                 for (let di = 0; di < goResult.details.length && di < 20; di++) {
@@ -2457,7 +2735,7 @@
                             goDownloadBtn.disabled = true;
                             goShowToast('❌ tidak ada yang diubah', 'error');
                         } else {
-                            goResultBytes = data;
+                            goResultBytes = resultBytes || new Uint8Array(goRaw);
                             if (goResult.disabled) {
                                 goStatGO.textContent = 'OFF ×' + goResult.count;
                             } else if (goResult.candidates > 0) {
@@ -2471,6 +2749,7 @@
                             goDownloadBtn.disabled = false;
 
                             const lines = [];
+                            if (unityFsNote) lines.push('[INFO] ' + unityFsNote);
                             if (goResult.disabled) {
                                 lines.push('[INJECT] GameObject m_IsActive → FALSE (' + goResult.count + 'x)');
                             } else if (goResult.candidates > 0) {
