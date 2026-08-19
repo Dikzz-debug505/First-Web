@@ -1114,14 +1114,16 @@
             const heroScanBtn = document.getElementById('heroScanBtn');
             const heroResetBtn = document.getElementById('heroResetBtn');
             const heroDownloadBtn = document.getElementById('heroDownloadBtn');
-            const heroGlobalToggle = document.getElementById('heroGlobalToggle');
-            const heroGlobalOpen = document.getElementById('heroGlobalOpen');
-            const heroGlobalClose = document.getElementById('heroGlobalClose');
+            const heroPickerWrap = document.getElementById('heroPickerWrap');
+            const heroSelect = document.getElementById('heroSelect');
+            const heroSearch = document.getElementById('heroSearch');
+            const heroPickerMeta = document.getElementById('heroPickerMeta');
 
             let heroBytes = null;
             let heroOrig = null;
             let heroData = [];
             let heroScanning = false;
+            let heroSelectedIdx = -1;
 
             function heroShowToast(msg, type) { showToast(msg, type); }
 
@@ -1144,12 +1146,16 @@
                         heroStatStatus.textContent = 'loaded';
                         heroStatStatus.style.color = '#16a34a';
                         heroData = [];
+                        heroSelectedIdx = -1;
                         heroResult.innerHTML = '';
                         heroStatHero.textContent = '0';
                         heroStatValues.textContent = '0';
                         heroDownloadBtn.disabled = true;
                         heroResetBtn.disabled = true;
-                        heroGlobalToggle.style.display = 'none';
+                        if (heroPickerWrap) heroPickerWrap.style.display = 'none';
+                        if (heroSelect) heroSelect.innerHTML = '<option value="">— pilih hero —</option>';
+                        if (heroSearch) heroSearch.value = '';
+                        if (heroPickerMeta) heroPickerMeta.textContent = '';
                         heroScanBtn.disabled = false;
                         heroShowToast('✅ file ' + file.name + ' siap', 'success');
                     } catch (e) {
@@ -1181,7 +1187,11 @@
                 heroScanBtn.textContent = '⏳ scanning...';
                 heroDownloadBtn.disabled = true;
                 heroResetBtn.disabled = true;
-                heroGlobalToggle.style.display = 'none';
+                if (heroPickerWrap) heroPickerWrap.style.display = 'none';
+                if (heroSelect) heroSelect.innerHTML = '<option value="">— pilih hero —</option>';
+                if (heroSearch) heroSearch.value = '';
+                if (heroPickerMeta) heroPickerMeta.textContent = '';
+                heroSelectedIdx = -1;
                 heroStatStatus.textContent = 'scanning...';
                 heroStatStatus.style.color = '#d97706';
                 heroResult.innerHTML = '';
@@ -1246,10 +1256,12 @@
                         heroDownloadBtn.disabled = (heroData.length === 0);
                         heroResetBtn.disabled = false;
                         if (heroData.length > 0) {
-                            heroGlobalToggle.style.display = 'flex';
-                            heroRenderResult(heroData);
-                            heroShowToast('✅ scan selesai, ' + heroData.length + ' hero ditemukan', 'success');
+                            heroPopulateSelect(heroData);
+                            if (heroPickerWrap) heroPickerWrap.style.display = 'block';
+                            heroResult.innerHTML = '<div class="hero-empty-hint">👆 pilih satu hero di atas untuk melihat nilai stat</div>';
+                            heroShowToast('✅ scan selesai, ' + heroData.length + ' hero — pilih satu untuk lihat nilai', 'success');
                         } else {
+                            if (heroPickerWrap) heroPickerWrap.style.display = 'none';
                             heroResult.innerHTML = '<div class="no-data">tidak ada data stat dalam rentang 10–3500</div>';
                             heroShowToast('⚠️ tidak ada nilai stat yang valid', 'warning');
                         }
@@ -1303,86 +1315,116 @@
 
             heroScanBtn.addEventListener('click', heroStartScan);
 
-            function heroRenderResult(heroes) {
-                if (!heroes || heroes.length === 0) {
-                    heroResult.innerHTML = '<div class="no-data">tidak ada data</div>';
+            function heroPopulateSelect(heroes, filterText) {
+                if (!heroSelect) return;
+                const q = (filterText || '').trim().toLowerCase();
+                const prev = heroSelect.value;
+                let html = '<option value="">— pilih hero —</option>';
+                let shown = 0;
+                for (let i = 0; i < heroes.length; i++) {
+                    const n = heroes[i].name || '';
+                    if (q && n.toLowerCase().indexOf(q) === -1) continue;
+                    html += '<option value="' + i + '">' + escapeHTML(n) +
+                        ' (' + heroes[i].values.length + ' nilai)</option>';
+                    shown++;
+                }
+                heroSelect.innerHTML = html;
+                // restore selection if still visible
+                if (prev !== '' && heroSelect.querySelector('option[value="' + prev + '"]')) {
+                    heroSelect.value = prev;
+                } else {
+                    heroSelect.value = '';
+                    heroSelectedIdx = -1;
+                }
+                if (heroPickerMeta) {
+                    heroPickerMeta.textContent = q
+                        ? (shown + ' / ' + heroes.length + ' hero cocok dengan filter')
+                        : (heroes.length + ' hero tersedia — pilih satu untuk melihat nilai');
+                }
+            }
+
+            function heroRenderSelected() {
+                const idx = heroSelectedIdx;
+                if (idx < 0 || !heroData[idx]) {
+                    heroResult.innerHTML = '<div class="hero-empty-hint">👆 pilih satu hero di atas untuk melihat nilai stat</div>';
                     return;
                 }
-                let html = '';
-                heroes.forEach((hero, idx) => {
-                    const total = hero.values.length;
+                const hero = heroData[idx];
+                const total = hero.values.length;
+                let html = `
+                    <div class="hero-card">
+                        <div class="hero-header">
+                            <span class="hero-name">${escapeHTML(hero.name)}</span>
+                            <span class="badge">${total} nilai</span>
+                        </div>
+                        <div class="hero-body open" id="hbody_${idx}">
+                `;
+                if (total === 0) {
+                    html += '<div class="no-data">tidak ada nilai</div>';
+                } else {
                     html += `
-                            <div class="hero-card">
-                                <div class="hero-header">
-                                    <span class="hero-name">${escapeHTML(hero.name)}</span>
-                                    <span class="badge">${total} nilai</span>
-                                    <div class="toggle-group">
-                                        <button class="btn btn-toggle btn-sm hero-open-btn" data-target="hbody_${idx}">📖 buka</button>
-                                        <button class="btn btn-toggle btn-sm hero-close-btn" data-target="hbody_${idx}">📕 tutup</button>
-                                    </div>
-                                </div>
-                                <div class="hero-body" id="hbody_${idx}">
-                        `;
-                    if (total === 0) {
-                        html += `<div class="no-data">tidak ada nilai</div>`;
-                    } else {
+                        <table>
+                            <thead><tr><th>offset</th><th>int32</th><th>float32</th><th>raw</th><th>edit int</th><th>edit float</th><th></th></tr></thead>
+                            <tbody>
+                    `;
+                    hero.values.forEach(function (v, vi) {
+                        const intStr = v.intVal !== null ? v.intVal : '-';
+                        const floatStr = v.floatVal !== null ? v.floatVal.toFixed(4) : '-';
                         html += `
-                                <table>
-                                    <thead><tr><th>offset</th><th>int32</th><th>float32</th><th>raw</th><th>edit int</th><th>edit float</th><th></th></tr></thead>
-                                    <tbody>
-                            `;
-                        hero.values.forEach((v, vi) => {
-                            const intStr = v.intVal !== null ? v.intVal : '-';
-                            const floatStr = v.floatVal !== null ? v.floatVal.toFixed(4) : '-';
-                            html += `
-                                        <tr>
-                                            <td>${v.offsetHex}</td>
-                                            <td class="type-int">${intStr}</td>
-                                            <td class="type-float">${floatStr}</td>
-                                            <td>${v.rawHex}</td>
-                                            <td><input class="edit-input" type="number" id="heditInt_${idx}_${vi}" value="${v.intVal !== null ? v.intVal : ''}" /></td>
-                                            <td><input class="edit-input" type="number" step="any" id="heditFloat_${idx}_${vi}" value="${v.floatVal !== null ? v.floatVal.toFixed(4) : ''}" /></td>
-                                            <td><button class="btn-apply hero-apply-btn" data-hero="${idx}" data-val="${vi}">terapkan</button></td>
-                                        </tr>
-                                `;
-                        });
-                        html += `</tbody></table>`;
-                    }
-                    html += `</div></div>`;
-                });
+                            <tr>
+                                <td>${v.offsetHex}</td>
+                                <td class="type-int">${intStr}</td>
+                                <td class="type-float">${floatStr}</td>
+                                <td>${v.rawHex}</td>
+                                <td><input class="edit-input" type="number" id="heditInt_${idx}_${vi}" value="${v.intVal !== null ? v.intVal : ''}" /></td>
+                                <td><input class="edit-input" type="number" step="any" id="heditFloat_${idx}_${vi}" value="${v.floatVal !== null ? v.floatVal.toFixed(4) : ''}" /></td>
+                                <td><button class="btn-apply hero-apply-btn" data-hero="${idx}" data-val="${vi}">terapkan</button></td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table>';
+                }
+                html += '</div></div>';
                 heroResult.innerHTML = html;
             }
 
+            // keep alias used by apply-edit refresh
+            function heroRenderResult() {
+                heroRenderSelected();
+            }
+
+            if (heroSelect) {
+                heroSelect.addEventListener('change', function () {
+                    const v = this.value;
+                    heroSelectedIdx = v === '' ? -1 : parseInt(v, 10);
+                    if (isNaN(heroSelectedIdx)) heroSelectedIdx = -1;
+                    heroRenderSelected();
+                    if (heroSelectedIdx >= 0 && heroData[heroSelectedIdx]) {
+                        heroShowToast('🧬 ' + heroData[heroSelectedIdx].name, 'info');
+                    }
+                });
+            }
+            if (heroSearch) {
+                heroSearch.addEventListener('input', function () {
+                    heroPopulateSelect(heroData, this.value);
+                    // if current selection filtered out, clear detail
+                    if (heroSelectedIdx >= 0) {
+                        const still = heroSelect && heroSelect.querySelector('option[value="' + heroSelectedIdx + '"]');
+                        if (!still) {
+                            heroSelectedIdx = -1;
+                            heroRenderSelected();
+                        }
+                    }
+                });
+            }
+
             heroResult.addEventListener('click', function(e) {
-                const openBtn = e.target.closest('.hero-open-btn');
-                if (openBtn) {
-                    e.stopPropagation();
-                    const body = document.getElementById(openBtn.dataset.target);
-                    if (body) body.classList.add('open');
-                    return;
-                }
-                const closeBtn = e.target.closest('.hero-close-btn');
-                if (closeBtn) {
-                    e.stopPropagation();
-                    const body = document.getElementById(closeBtn.dataset.target);
-                    if (body) body.classList.remove('open');
-                    return;
-                }
                 const applyBtn = e.target.closest('.hero-apply-btn');
                 if (applyBtn) {
                     const heroIdx = parseInt(applyBtn.dataset.hero, 10);
                     const valIdx = parseInt(applyBtn.dataset.val, 10);
                     heroApplyEdit(heroIdx, valIdx);
                 }
-            });
-
-            heroGlobalOpen.addEventListener('click', function() {
-                document.querySelectorAll('#panel-hero .hero-body').forEach(el => el.classList.add('open'));
-                heroShowToast('📖 semua hero dibuka', 'info');
-            });
-            heroGlobalClose.addEventListener('click', function() {
-                document.querySelectorAll('#panel-hero .hero-body').forEach(el => el.classList.remove('open'));
-                heroShowToast('📕 semua hero ditutup', 'info');
             });
 
             let heroApplying = false;
@@ -1441,7 +1483,7 @@
                     }
                     const chunk = heroBytes.slice(offset, offset + 4);
                     val.rawHex = Array.from(chunk).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('');
-                    heroRenderResult(heroData);
+                    heroRenderSelected();
                     heroShowToast('✅ ' + val.offsetHex + ' → ' + newVal, 'success');
                     heroDownloadBtn.disabled = false;
                     heroResetBtn.disabled = false;
@@ -1457,12 +1499,16 @@
                 if (!confirm('reset semua perubahan?')) return;
                 heroBytes = new Uint8Array(heroOrig);
                 heroData = [];
+                heroSelectedIdx = -1;
                 heroResult.innerHTML = '';
                 heroStatHero.textContent = '0';
                 heroStatValues.textContent = '0';
                 heroDownloadBtn.disabled = true;
                 heroResetBtn.disabled = true;
-                heroGlobalToggle.style.display = 'none';
+                if (heroPickerWrap) heroPickerWrap.style.display = 'none';
+                if (heroSelect) heroSelect.innerHTML = '<option value="">— pilih hero —</option>';
+                if (heroSearch) heroSearch.value = '';
+                if (heroPickerMeta) heroPickerMeta.textContent = '';
                 heroShowToast('↺ reset berhasil, scan ulang', 'warning');
                 heroStatStatus.textContent = 'reset';
                 heroStatStatus.style.color = '#65676b';

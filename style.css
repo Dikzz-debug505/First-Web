@@ -361,18 +361,60 @@ body {
 }
 
 /* ----- GLOBAL TOGGLE ----- */
-.global-toggle-row {
+/* ----- HERO PICKER ----- */
+.hero-picker-wrap {
+    margin: 14px 0 16px;
+    padding: 14px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    border-left: 2px solid var(--accent);
+}
+.hero-picker-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+.hero-picker-row {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
     align-items: center;
-    margin-bottom: 14px;
-    padding: 4px 0;
 }
-
-.global-toggle-row .label {
+.hero-select {
+    flex: 1 1 220px;
+    min-width: 180px;
+    max-width: 420px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 13px;
+    color-scheme: dark;
+}
+.hero-search {
+    flex: 1 1 160px;
+    min-width: 140px;
+    max-width: 280px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 13px;
+    color-scheme: dark;
+}
+.hero-search::placeholder {
+    color: var(--text-muted);
+}
+.hero-picker-meta {
+    margin-top: 8px;
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
 }
 
 /* ----- HERO CARDS (Systemic) ----- */
@@ -414,10 +456,20 @@ body {
 
 .hero-body {
     padding: 0;
-    display: none;
+    display: block;
 }
 .hero-body.open {
     display: block;
+}
+
+.hero-empty-hint {
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius);
 }
 
 /* ----- TABLE (Systemic) ----- */

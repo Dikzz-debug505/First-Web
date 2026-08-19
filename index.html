@@ -95,10 +95,15 @@
                 <div class="stat-item"><span class="label">status</span><span class="value" id="heroStatStatus" style="font-size:16px; color:var(--text-secondary);">siap</span></div>
             </div>
 
-            <div class="global-toggle-row" id="heroGlobalToggle" style="display:none;">
-                <span class="label">☕ semua hero</span>
-                <button class="btn btn-toggle btn-sm" id="heroGlobalOpen">buka</button>
-                <button class="btn btn-toggle btn-sm" id="heroGlobalClose">tutup</button>
+            <div id="heroPickerWrap" class="hero-picker-wrap" style="display:none;">
+                <label for="heroSelect" class="hero-picker-label">🎯 pilih hero</label>
+                <div class="hero-picker-row">
+                    <select id="heroSelect" class="hero-select">
+                        <option value="">— pilih hero —</option>
+                    </select>
+                    <input type="search" id="heroSearch" class="hero-search" placeholder="cari nama hero..." autocomplete="off" />
+                </div>
+                <div class="hero-picker-meta" id="heroPickerMeta"></div>
             </div>
 
             <div id="heroResult"></div>
