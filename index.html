@@ -304,9 +304,9 @@
             <div class="admin-card">
                 <div class="admin-card-header-row">
                     <h2>👥 Daftar User</h2>
-                    <button type="button" class="btn btn-sm btn-danger" id="adminDeleteAllManagedBtn" title="Hapus semua user managed (bukan hardcoded)">Hapus Semua Managed</button>
+                    <button type="button" class="btn btn-sm btn-danger" id="adminDeleteAllManagedBtn" title="Hapus semua akun kecuali admin">Hapus Semua</button>
                 </div>
-                <p class="admin-hint">User hardcoded di <code>credentials.js</code> + user yang dikelola di sini (disimpan di localStorage browser ini). Tombol <strong>Hapus</strong> menghapus Username &amp; Password user managed.</p>
+                <p class="admin-hint">Setiap akun (kecuali admin) punya tombol <strong>Hapus</strong>. User managed dihapus dari localStorage; user hardcoded dinonaktifkan di browser ini (blocklist).</p>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="adminUserTable">
                         <thead>
@@ -330,8 +330,8 @@
                 <strong>Catatan penting:</strong>
                 <ul>
                     <li>Akun <code>master</code> adalah admin khusus dan tidak bisa dihapus/diubah lewat panel ini.</li>
-                    <li>Tombol <strong>Hapus</strong> di tabel menghapus Username &amp; Password user <em>managed</em>. User hardcoded hanya bisa diubah lewat <code>credentials.js</code>.</li>
-                    <li><strong>Hapus Semua Managed</strong> menghapus seluruh user yang ditambahkan lewat panel (bukan hardcoded).</li>
+                    <li>Tombol <strong>Hapus</strong> ada di <em>setiap</em> akun non-admin. Managed dihapus dari localStorage; hardcoded dinonaktifkan lewat blocklist browser ini.</li>
+                    <li><strong>Hapus Semua</strong> menghapus/menonaktifkan semua akun kecuali admin.</li>
                     <li><strong>Bersihkan Form</strong> mengosongkan field Username &amp; Password di form tambah/edit.</li>
                     <li>Batas device disimpan di localStorage browser ini. Setiap browser/device punya storage sendiri, jadi batas bersifat lokal per browser.</li>
                     <li>Untuk reset device suatu user, klik tombol "Reset Device" di tabel.</li>

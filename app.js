@@ -164,6 +164,7 @@
             const LOGIN_SESSION_KEY = 'mlbb_auth_session_v2';
             const LOGIN_FAIL_KEY = 'mlbb_login_fail_v1';
             const MANAGED_USERS_KEY = 'mlbb_managed_users_v1';
+            const DELETED_USERS_KEY = 'mlbb_deleted_users_v1'; // blocklist username (case-insensitive)
             const DEVICE_ID_KEY = 'mlbb_device_id_v1';
             const DEVICE_REGISTRY_KEY = 'mlbb_device_registry_v1';
             const MAX_FAIL_ATTEMPTS = 5;
@@ -301,6 +302,55 @@
                 } catch (e) {}
             }
 
+            function readDeletedUsers() {
+                try {
+                    const raw = localStorage.getItem(DELETED_USERS_KEY);
+                    if (!raw) return [];
+                    const arr = JSON.parse(raw);
+                    if (!Array.isArray(arr)) return [];
+                    return arr.map(function (s) { return String(s || '').trim().toLowerCase(); })
+                        .filter(Boolean);
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function writeDeletedUsers(list) {
+                try {
+                    const clean = (list || []).map(function (s) {
+                        return String(s || '').trim().toLowerCase();
+                    }).filter(Boolean);
+                    // unique
+                    const seen = {};
+                    const out = [];
+                    clean.forEach(function (u) {
+                        if (!seen[u]) { seen[u] = true; out.push(u); }
+                    });
+                    localStorage.setItem(DELETED_USERS_KEY, JSON.stringify(out));
+                } catch (e) {}
+            }
+
+            function isUserDeleted(username) {
+                const u = String(username || '').trim().toLowerCase();
+                if (!u) return false;
+                return readDeletedUsers().indexOf(u) !== -1;
+            }
+
+            function markUserDeleted(username) {
+                const u = String(username || '').trim().toLowerCase();
+                if (!u) return;
+                const list = readDeletedUsers();
+                if (list.indexOf(u) === -1) {
+                    list.push(u);
+                    writeDeletedUsers(list);
+                }
+            }
+
+            function unmarkUserDeleted(username) {
+                const u = String(username || '').trim().toLowerCase();
+                writeDeletedUsers(readDeletedUsers().filter(function (x) { return x !== u; }));
+            }
+
             function getHardcodedUsers() {
                 const list = window.MLBB_USERS;
                 if (!Array.isArray(list) || list.length === 0) return [];
@@ -319,13 +369,25 @@
             /**
              * Gabungan: hardcoded dulu, lalu managed (skip jika username sudah ada di hardcoded).
              * Admin hanya dari hardcoded.
+             * User yang di-Hapus dari panel (blocklist) tidak ikut.
              */
             function getUsers() {
-                const hard = getHardcodedUsers();
+                const deleted = {};
+                readDeletedUsers().forEach(function (u) { deleted[u] = true; });
+                const hard = getHardcodedUsers().filter(function (r) {
+                    // Admin tidak pernah di-block; user biasa ikut blocklist
+                    if (r.isAdmin) return true;
+                    return !deleted[r.username.toLowerCase()];
+                });
                 const hardNames = {};
                 hard.forEach(function (r) { hardNames[r.username.toLowerCase()] = true; });
+                // Juga skip hardcoded yang di-delete agar managed tidak "menggantikan" nama yang sama tanpa sengaja
+                getHardcodedUsers().forEach(function (r) {
+                    hardNames[r.username.toLowerCase()] = true;
+                });
                 const managed = readManagedUsers().filter(function (r) {
-                    return !hardNames[r.username.toLowerCase()];
+                    const key = r.username.toLowerCase();
+                    return !hardNames[key] && !deleted[key];
                 });
                 return hard.concat(managed);
             }
@@ -752,8 +814,9 @@
                         actions = '<div class="admin-actions">';
                         if (u._source === 'managed') {
                             actions += '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>';
-                            actions += '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>';
                         }
+                        // Tombol Hapus di SETIAP akun (kecuali admin)
+                        actions += '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>';
                         actions += '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>';
                         actions += '</div>';
                     }
@@ -862,6 +925,7 @@
                         managed[idx].maxDevices = maxDev;
                         managed[idx].expiryDate = exp;
                         writeManagedUsers(managed);
+                        unmarkUserDeleted(uname);
                         showToast('✅ User diperbarui', 'success');
                     } else {
                         if (hardNames[uname.toLowerCase()] || managed.some(function (r) {
@@ -877,6 +941,7 @@
                             expiryDate: exp
                         });
                         writeManagedUsers(managed);
+                        unmarkUserDeleted(uname);
                         showToast('✅ User baru ditambahkan', 'success');
                     }
 
@@ -903,23 +968,31 @@
                         }
                     } else if (action === 'delete') {
                         const u = getUserByUsername(uname);
-                        if (!u || u._source !== 'managed' || u.isAdmin) {
-                            showToast('Hanya user managed yang bisa dihapus dari panel', 'error');
+                        if (!u || u.isAdmin) {
+                            showToast('Akun admin tidak bisa dihapus', 'error');
                             return;
                         }
+                        const srcNote = u._source === 'hardcoded'
+                            ? '\n\nCatatan: user ini dari credentials.js. Hapus di panel hanya menonaktifkan di browser ini (blocklist lokal).'
+                            : '\n\nUser managed akan dihapus dari localStorage.';
                         if (confirm(
-                            'Hapus Username & Password?\n\n' +
+                            'Hapus akun ini?\n\n' +
                             'Username: ' + uname + '\n' +
-                            'Password: ' + maskPassword(u.password) + '\n\n' +
-                            'User ini akan dihapus permanen dari panel (localStorage). Device registry juga di-reset.'
+                            'Password: ' + maskPassword(u.password) + '\n' +
+                            'Sumber: ' + (u._source || '-') +
+                            srcNote +
+                            '\n\nDevice registry juga di-reset.'
                         )) {
+                            // Hapus dari managed jika ada
                             const managed = readManagedUsers().filter(function (r) {
                                 return r.username.toLowerCase() !== uname.toLowerCase();
                             });
                             writeManagedUsers(managed);
+                            // Blocklist agar hardcoded juga tidak muncul / tidak bisa login di browser ini
+                            markUserDeleted(uname);
                             resetDevicesForUser(uname);
                             renderAdminUserTable();
-                            showToast('🗑️ Username & Password "' + uname + '" dihapus', 'info');
+                            showToast('🗑️ Akun "' + uname + '" dihapus', 'info');
                             if (adminEditIndex && String(adminEditIndex.value).toLowerCase() === uname.toLowerCase()) {
                                 resetAdminForm();
                             }
@@ -937,28 +1010,30 @@
                 });
             }
 
-            // Hapus semua user managed (Username & Password)
+            // Hapus semua akun non-admin (tombol di header daftar)
             const adminDeleteAllManagedBtn = document.getElementById('adminDeleteAllManagedBtn');
             if (adminDeleteAllManagedBtn) {
                 adminDeleteAllManagedBtn.addEventListener('click', function () {
-                    const managed = readManagedUsers();
-                    if (!managed.length) {
-                        showToast('Tidak ada user managed untuk dihapus', 'warning');
+                    const all = getUsers().filter(function (u) { return !u.isAdmin; });
+                    if (!all.length) {
+                        showToast('Tidak ada akun non-admin untuk dihapus', 'warning');
                         return;
                     }
                     if (!confirm(
-                        'Hapus SEMUA Username & Password managed?\n\n' +
-                        'Jumlah: ' + managed.length + ' user\n' +
-                        'User hardcoded di credentials.js tidak terpengaruh.\n\n' +
-                        'Tindakan ini tidak bisa dibatalkan.'
+                        'Hapus SEMUA akun (kecuali admin)?\n\n' +
+                        'Jumlah: ' + all.length + ' akun\n' +
+                        '• Managed → dihapus dari localStorage\n' +
+                        '• Hardcoded → dinonaktifkan di browser ini (blocklist)\n\n' +
+                        'Tindakan ini tidak bisa dibatalkan (kecuali clear localStorage).'
                     )) return;
-                    managed.forEach(function (r) {
+                    all.forEach(function (r) {
+                        markUserDeleted(r.username);
                         resetDevicesForUser(r.username);
                     });
                     writeManagedUsers([]);
                     resetAdminForm();
                     renderAdminUserTable();
-                    showToast('🗑️ Semua user managed (' + managed.length + ') dihapus', 'info');
+                    showToast('🗑️ ' + all.length + ' akun dihapus', 'info');
                 });
             }
 
