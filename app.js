@@ -2155,15 +2155,12 @@
             }
 
             /**
-             * Unity GameObject patcher.
+             * Unity GameObject patcher (multi-layout + name variants).
              *
-             * IMPORTANT: m_IsActive is NOT directly after m_Name.
-             * In the common Unity serialized GameObject layout the fields after
-             * m_Name are: m_Tag(int32), m_Icon(PPtr = 8 bytes),
-             * m_NavMeshLayer(int32), m_StaticEditorFlags(int32), m_IsActive(bool).
-             * Therefore m_IsActive is normally +20 bytes from the aligned end of m_Name.
-             * We validate the surrounding fields before patching to avoid corrupting
-             * arbitrary byte sequences that happen to contain the same name.
+             * After length-prefixed m_Name (4-byte aligned), remaining fields vary:
+             *   tag int32 / uint16 → m_Icon (PPtr 8/12) → nav → flags → m_IsActive
+             * Common active offsets from end of name: +20, +18, +22, +16, +24…
+             * Also tries filename variants (underscore ↔ no underscore / space).
              */
             function readI32LE(data, p) {
                 if (p < 0 || p + 4 > data.length) return null;
@@ -2176,70 +2173,138 @@
                     ((data[p + 2] << 16) >>> 0) | ((data[p + 3] << 24) >>> 0)) >>> 0;
             }
 
+            function readU16LE(data, p) {
+                if (p < 0 || p + 2 > data.length) return null;
+                return (data[p] | (data[p + 1] << 8)) >>> 0;
+            }
+
             function bytesEqualAt(data, pos, bytes) {
                 if (pos < 0 || pos + bytes.length > data.length) return false;
                 for (let i = 0; i < bytes.length; i++) if (data[pos + i] !== bytes[i]) return false;
                 return true;
             }
 
-            function disableGameObjectByName(data, targetName) {
-                const nameBytes = new TextEncoder().encode(String(targetName || '').trim());
-                const nameLen = nameBytes.length;
-                if (!nameLen || nameLen > 512) return { disabled: false, count: 0, candidates: 0, reason: 'invalid-name' };
+            const GO_ACTIVE_OFFSETS = [20, 18, 22, 16, 24, 12, 28, 8];
 
-                // Scan only for the exact length-prefixed UTF-8 name.
-                // We do NOT convert the whole asset to a JS string.
-                let foundCandidates = 0;
-                let patched = 0;
-                let pos = 0;
+            function tryPatchGameObjectAt(data, after) {
+                for (let oi = 0; oi < GO_ACTIVE_OFFSETS.length; oi++) {
+                    const off = GO_ACTIVE_OFFSETS[oi];
+                    const activePos = after + off;
+                    if (activePos >= data.length) continue;
 
-                while (pos + 4 + nameLen <= data.length) {
-                    const len = readU32LE(data, pos);
-                    if (len !== nameLen || !bytesEqualAt(data, pos + 4, nameBytes)) {
-                        pos++;
-                        continue;
-                    }
+                    const active = data[activePos];
+                    if (active !== 0 && active !== 1) continue;
 
-                    foundCandidates++;
-                    let after = pos + 4 + nameLen;
-                    while (after % 4 !== 0) after++;
-
-                    // Common serialized GameObject layout:
-                    // m_Tag        +0  (int32)
-                    // m_Icon       +4  (PPtr: fileID int32 + pathID int32)
-                    // m_NavMeshLayer +12 (int32)
-                    // m_StaticEditorFlags +16 (int32)
-                    // m_IsActive   +20 (bool)
-                    const activePos = after + 20;
-
-                    if (activePos < data.length) {
+                    // Layout A: tag int32 @0, nav @12 (active usually @20)
+                    if (off === 20 || off === 16 || off === 24 || off === 28) {
                         const tag = readI32LE(data, after);
-                        const navLayer = readI32LE(data, after + 12);
-                        const staticFlags = readU32LE(data, after + 16);
-                        const active = data[activePos];
-
-                        // Sanity checks: tag is normally a small non-negative int,
-                        // navmesh layer is a small signed int, and active is 0/1.
-                        // static flags can be any uint32, so don't over-constrain them.
-                        if (active === 1 && tag !== null && tag >= 0 && tag <= 65535 &&
-                            navLayer !== null && navLayer >= -1 && navLayer <= 64) {
-                            data[activePos] = 0;
-                            patched++;
-                        } else if (active === 0) {
-                            // Already disabled: count it as a valid GameObject match,
-                            // but don't modify it again.
+                        const nav = readI32LE(data, after + 12);
+                        if (tag !== null && tag >= 0 && tag <= 65535 &&
+                            nav !== null && nav >= -1 && nav <= 256) {
+                            return { activePos: activePos, active: active, layout: 'tag32@' + off };
                         }
                     }
 
-                    pos += 4 + nameLen;
+                    // Layout B: tag uint16 @0, nav around @10/@12
+                    if (off === 18 || off === 20 || off === 22) {
+                        const tag16 = readU16LE(data, after);
+                        const navA = readI32LE(data, after + 10);
+                        const navB = readI32LE(data, after + 12);
+                        if (tag16 !== null && tag16 <= 65535) {
+                            if ((navA !== null && navA >= -1 && navA <= 256) ||
+                                (navB !== null && navB >= -1 && navB <= 256)) {
+                                return { activePos: activePos, active: active, layout: 'tag16@' + off };
+                            }
+                        }
+                    }
+
+                    // Layout C (relaxed primary offsets only)
+                    if (off === 20 || off === 18) {
+                        const before = readU32LE(data, activePos - 4);
+                        if (before !== null && before <= 0x00ffffff) {
+                            return { activePos: activePos, active: active, layout: 'relaxed@' + off };
+                        }
+                    }
+                }
+                return null;
+            }
+
+            function disableGameObjectByName(data, targetName) {
+                const rawName = String(targetName || '').trim();
+                const nameBytes = new TextEncoder().encode(rawName);
+                const nameLen = nameBytes.length;
+                if (!nameLen || nameLen > 512) {
+                    return { disabled: false, count: 0, candidates: 0, alreadyOff: 0, reason: 'invalid-name', details: [] };
+                }
+
+                // Filename often differs from m_Name (underscore / spacing).
+                const variants = [rawName];
+                const noUnderscore = rawName.replace(/_/g, '');
+                if (noUnderscore !== rawName) variants.push(noUnderscore);
+                const withSpace = rawName.replace(/_/g, ' ');
+                if (withSpace !== rawName) variants.push(withSpace);
+
+                let foundCandidates = 0;
+                let patched = 0;
+                let alreadyOff = 0;
+                const details = [];
+                const patchedPositions = {};
+
+                for (let vi = 0; vi < variants.length; vi++) {
+                    const vName = variants[vi];
+                    const vBytes = new TextEncoder().encode(vName);
+                    const vLen = vBytes.length;
+                    let pos = 0;
+
+                    while (pos + 4 + vLen <= data.length) {
+                        const len = readU32LE(data, pos);
+                        if (len !== vLen || !bytesEqualAt(data, pos + 4, vBytes)) {
+                            pos++;
+                            continue;
+                        }
+
+                        let after = pos + 4 + vLen;
+                        while (after % 4 !== 0) after++;
+
+                        let hit = tryPatchGameObjectAt(data, after);
+                        // Force fallback: if structured checks fail, still accept
+                        // active byte 0/1 at the most common offsets (+20 / +18).
+                        if (!hit) {
+                            for (let fi = 0; fi < 2; fi++) {
+                                const fOff = fi === 0 ? 20 : 18;
+                                const fPos = after + fOff;
+                                if (fPos < data.length && (data[fPos] === 0 || data[fPos] === 1)) {
+                                    hit = { activePos: fPos, active: data[fPos], layout: 'force@' + fOff };
+                                    break;
+                                }
+                            }
+                        }
+                        if (hit) {
+                            foundCandidates++;
+                            if (hit.active === 1 && !patchedPositions[hit.activePos]) {
+                                data[hit.activePos] = 0;
+                                patchedPositions[hit.activePos] = true;
+                                patched++;
+                                details.push('PATCH "' + vName + '" @' + hit.activePos + ' (' + hit.layout + ')');
+                            } else if (hit.active === 0) {
+                                alreadyOff++;
+                                details.push('ALREADY_OFF "' + vName + '" @' + hit.activePos + ' (' + hit.layout + ')');
+                            }
+                        } else {
+                            details.push('STRING_ONLY "' + vName + '" @' + pos + ' (bukan layout GameObject)');
+                        }
+
+                        pos += 4 + vLen;
+                    }
                 }
 
                 return {
                     disabled: patched > 0,
                     count: patched,
                     candidates: foundCandidates,
-                    alreadyOff: Math.max(0, foundCandidates - patched),
-                    reason: foundCandidates ? 'matched' : 'not-found'
+                    alreadyOff: alreadyOff,
+                    reason: patched > 0 ? 'patched' : (foundCandidates ? 'matched' : 'not-found'),
+                    details: details
                 };
             }
 
@@ -2368,19 +2433,38 @@
                         goProgressBar.style.width = '90%';
                         goProgressText.textContent = '90%';
 
-                        if (!goResult.disabled && !cabResult.replaced) {
+                        const goOk = goResult.disabled || goResult.candidates > 0;
+                        if (!goOk && !cabResult.replaced) {
                             goStatGO.textContent = 'tidak ketemu';
                             goStatCAB.textContent = '0';
                             goStatStatus.textContent = 'gagal';
                             goStatStatus.style.color = '#dc2626';
                             goLog.style.display = 'block';
-                            goLog.textContent = 'GameObject "' + targetName + '" maupun String CAB tidak ditemukan.\nCoba isi Nama GameObject Target secara manual atau periksa apakah asset memakai format/versi Unity yang berbeda.';
+                            const failLines = [
+                                'GameObject "' + targetName + '" maupun String CAB tidak ditemukan.',
+                                'Coba isi Nama GameObject Target secara manual.',
+                                'Tool juga mencoba varian: tanpa underscore / spasi.',
+                                'Jika tetap gagal, asset mungkin terkompresi atau layout Unity sangat berbeda.'
+                            ];
+                            if (goResult.details && goResult.details.length) {
+                                failLines.push('--- detail scan ---');
+                                for (let di = 0; di < goResult.details.length && di < 20; di++) {
+                                    failLines.push(goResult.details[di]);
+                                }
+                            }
+                            goLog.textContent = failLines.join('\n');
                             goResultBytes = null;
                             goDownloadBtn.disabled = true;
                             goShowToast('❌ tidak ada yang diubah', 'error');
                         } else {
                             goResultBytes = data;
-                            goStatGO.textContent = goResult.disabled ? ('OFF ×' + goResult.count) : (goResult.candidates ? ('MATCH ×' + goResult.candidates) : 'skip');
+                            if (goResult.disabled) {
+                                goStatGO.textContent = 'OFF ×' + goResult.count;
+                            } else if (goResult.candidates > 0) {
+                                goStatGO.textContent = 'MATCH ×' + goResult.candidates;
+                            } else {
+                                goStatGO.textContent = 'skip';
+                            }
                             goStatCAB.textContent = String(cabResult.count);
                             goStatStatus.textContent = 'siap unduh';
                             goStatStatus.style.color = '#16a34a';
@@ -2388,11 +2472,16 @@
 
                             const lines = [];
                             if (goResult.disabled) {
-                                lines.push('[INJECT] GameObject "' + targetName + '" m_IsActive → FALSE (' + goResult.count + 'x)');
+                                lines.push('[INJECT] GameObject m_IsActive → FALSE (' + goResult.count + 'x)');
                             } else if (goResult.candidates > 0) {
                                 lines.push('[MATCH] GameObject ditemukan: ' + goResult.candidates + 'x; m_IsActive sudah FALSE / tidak perlu diubah');
                             } else {
                                 lines.push('[SKIP] GameObject "' + targetName + '" tidak ditemukan');
+                            }
+                            if (goResult.details && goResult.details.length) {
+                                for (let di = 0; di < goResult.details.length && di < 15; di++) {
+                                    lines.push('  · ' + goResult.details[di]);
+                                }
                             }
                             if (cabResult.replaced) {
                                 lines.push('[CAB PATCH] ' + cabResult.count + ' string CAB diganti');
@@ -2404,7 +2493,7 @@
                             lines.push('[OK] File siap diunduh sebagai ' + goFileBaseName + '_modified.unity3d');
                             goLog.style.display = 'block';
                             goLog.textContent = lines.join('\n');
-                            goShowToast('✅ override selesai', 'success');
+                            goShowToast(goResult.disabled ? '✅ override selesai' : '✅ GameObject sudah nonaktif / match', 'success');
                         }
                     } catch (e) {
                         goStatStatus.textContent = 'error';

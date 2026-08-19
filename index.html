@@ -207,7 +207,7 @@
         <div class="menu-panel" id="panel-go">
 
             <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
-                Nonaktifkan <strong>GameObject</strong> yang namanya sama dengan file, dan ganti string <strong>CAB</strong> (opsional). Upload 1 file <code>.unity3d</code> saja.
+                Nonaktifkan <strong>GameObject</strong> (multi-layout Unity) dan ganti string <strong>CAB</strong> (opsional). Upload 1 file <code>.unity3d</code>. Tool otomatis mencoba varian nama (tanpa underscore / spasi) dan beberapa offset <code>m_IsActive</code>.
             </p>
 
             <div class="upload-zone" id="goDropZone">
@@ -223,7 +223,7 @@
                     🎯 Nama GameObject Target
                 </label>
                 <input type="text" id="goTargetInput" placeholder="Default: nama file tanpa .unity3d" style="width:100%; max-width:480px; padding:9px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-primary); font-family:'SF Mono',Consolas,monospace; font-size:13px; color:var(--text-primary); color-scheme:dark;" />
-                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">Isi manual jika nama GameObject berbeda dari nama file.</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">Default = nama file. Isi manual jika beda. Otomatis juga coba tanpa <code>_</code> dan dengan spasi.</div>
             </div>
 
             <div style="margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
