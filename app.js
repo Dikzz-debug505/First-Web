@@ -162,6 +162,8 @@
             // + Admin Panel + Device Limit per user
             // ============================================================
             const LOGIN_SESSION_KEY = 'mlbb_auth_session_v2';
+            const AUTH_TOKEN_KEY = 'mlbb_auth_token_v1';
+            const API_BASE = '';
             const LOGIN_FAIL_KEY = 'mlbb_login_fail_v1';
             const MANAGED_USERS_KEY = 'mlbb_managed_users_v1';
             const DELETED_USERS_KEY = 'mlbb_deleted_users_v1'; // blocklist username (case-insensitive)
@@ -192,6 +194,29 @@
             let loginInProgress = false;
             let currentSessionUser = null;
             let currentIsAdmin = false;
+            let adminUsersCache = [];
+
+            function getAuthToken() {
+                try { return sessionStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch (e) { return ''; }
+            }
+            function setAuthToken(token) {
+                try {
+                    if (token) sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+                    else sessionStorage.removeItem(AUTH_TOKEN_KEY);
+                } catch (e) {}
+            }
+            function clearAuthToken() { setAuthToken(''); }
+
+            async function apiFetch(path, options) {
+                options = options || {};
+                const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+                const token = getAuthToken();
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+                const res = await fetch(API_BASE + path, Object.assign({}, options, { headers: headers }));
+                let body = null;
+                try { body = await res.json(); } catch (e) { body = null; }
+                return { status: res.status, ok: res.ok, body: body };
+            }
 
             // ---------- Device ID ----------
             function getOrCreateDeviceId() {
@@ -372,25 +397,28 @@
              * User yang di-Hapus dari panel (blocklist) tidak ikut.
              */
             function getUsers() {
-                const deleted = {};
-                readDeletedUsers().forEach(function (u) { deleted[u] = true; });
-                const hard = getHardcodedUsers().filter(function (r) {
-                    // Admin tidak pernah di-block; user biasa ikut blocklist
-                    if (r.isAdmin) return true;
-                    return !deleted[r.username.toLowerCase()];
-                });
-                const hardNames = {};
-                hard.forEach(function (r) { hardNames[r.username.toLowerCase()] = true; });
-                // Juga skip hardcoded yang di-delete agar managed tidak "menggantikan" nama yang sama tanpa sengaja
-                getHardcodedUsers().forEach(function (r) {
-                    hardNames[r.username.toLowerCase()] = true;
-                });
-                const managed = readManagedUsers().filter(function (r) {
-                    const key = r.username.toLowerCase();
-                    return !hardNames[key] && !deleted[key];
-                });
-                return hard.concat(managed);
+                return adminUsersCache.slice();
             }
+
+            async function refreshUsersFromApi() {
+                const r = await apiFetch('/api/users');
+                if (r.body && r.body.ok && Array.isArray(r.body.users)) {
+                    adminUsersCache = r.body.users.map(function (u) {
+                        return {
+                            username: u.username,
+                            password: '',
+                            maxDevices: u.maxDevices == null ? null : u.maxDevices,
+                            expiryDate: u.expiryDate || null,
+                            isAdmin: !!u.isAdmin,
+                            deviceCount: u.deviceCount,
+                            _source: 'supabase'
+                        };
+                    });
+                    return adminUsersCache;
+                }
+                throw new Error((r.body && r.body.error) || 'gagal memuat user');
+            }
+
 
             function getUserByUsername(username) {
                 const u = String(username || '').trim().toLowerCase();
@@ -463,50 +491,43 @@
                 return st;
             }
 
-            function validateCredentials(username, password) {
-                const users = getUsers();
+            async function validateCredentials(username, password) {
                 const u = String(username || '').trim();
                 const p = String(password || '');
                 if (u.length < 1 || u.length > 64 || p.length < 1 || p.length > 128) {
                     return { ok: false };
                 }
-                for (let i = 0; i < users.length; i++) {
-                    const row = users[i];
-                    if (!row) continue;
-                    if (timingSafeEqual(String(row.username || '').trim(), u) &&
-                        timingSafeEqual(String(row.password || ''), p)) {
-
-                        if (row.expiryDate) {
-                            const expDate = new Date(String(row.expiryDate));
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            if (isNaN(expDate.getTime()) || today > expDate) {
-                                return { ok: false, expired: true };
-                            }
-                        }
-
-                        // Device limit (skip for admin)
-                        if (!row.isAdmin) {
-                            const devCheck = checkAndRegisterDevice(row.username, row.maxDevices);
-                            if (!devCheck.ok) {
-                                return {
-                                    ok: false,
-                                    maxDevices: true,
-                                    current: devCheck.current,
-                                    max: devCheck.max
-                                };
-                            }
-                        }
-
+                const deviceId = getOrCreateDeviceId();
+                try {
+                    const { status, body } = await apiFetch('/api/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ username: u, password: p, deviceId: deviceId })
+                    });
+                    if (!body) return { ok: false };
+                    if (body.ok && body.token) {
+                        setAuthToken(body.token);
                         return {
                             ok: true,
-                            username: String(row.username || '').trim(),
-                            isAdmin: !!row.isAdmin
+                            username: body.username,
+                            isAdmin: !!body.isAdmin
                         };
                     }
+                    if (body.error === 'expired') return { ok: false, expired: true };
+                    if (body.error === 'max_devices') {
+                        return {
+                            ok: false,
+                            maxDevices: true,
+                            current: body.current,
+                            max: body.max
+                        };
+                    }
+                    return { ok: false };
+                } catch (e) {
+                    console.error('login api', e);
+                    return { ok: false, network: true };
                 }
-                return { ok: false };
             }
+
 
             function setSession(username, isAdmin) {
                 try {
@@ -522,8 +543,10 @@
 
             function clearSession() {
                 try { sessionStorage.removeItem(LOGIN_SESSION_KEY); } catch (e) {}
+                clearAuthToken();
                 currentSessionUser = null;
                 currentIsAdmin = false;
+                adminUsersCache = [];
             }
 
             function readSession() {
@@ -636,7 +659,7 @@
                 }
             }
 
-            function attemptLogin(username, password) {
+            async function attemptLogin(username, password) {
                 if (loginInProgress) return false;
                 if (isLockedOut()) {
                     const sec = remainingLockSeconds();
@@ -655,7 +678,7 @@
                 }
                 showSpinner('Memproses login...');
 
-                const result = validateCredentials(username, password);
+                const result = await validateCredentials(username, password);
 
                 if (!result.ok) {
                     const failState = registerFailedAttempt();
@@ -667,16 +690,16 @@
                         loginInProgress = false;
 
                         if (loginError) {
-                            if (result.expired) {
+                            if (result.network) {
+                                loginError.textContent = '🌐 Gagal terhubung ke server. Coba lagi.';
+                            } else if (result.expired) {
                                 loginError.textContent = '❌ Akun sudah kedaluarsa.';
                             } else if (result.maxDevices) {
                                 loginError.textContent = '📱 Batas device tercapai (' + result.current + '/' + result.max + '). Hubungi admin untuk reset.';
                             } else if (isLockedOut()) {
-                                loginError.textContent = '🔒 Terlalu banyak percobaan gagal. Akun terkunci sementara ' + Math.ceil(LOCKOUT_MS / 1000) + ' detik.';
+                                loginError.textContent = '🔒 Terlalu banyak percobaan gagal. Akun terkunci sementara.';
                             } else {
-                                const left = MAX_FAIL_ATTEMPTS - readFailState().count;
-                                loginError.textContent = 'Username atau password salah.' +
-                                    (left > 0 && left < MAX_FAIL_ATTEMPTS ? ' (sisa ' + left + ' percobaan)' : '');
+                                loginError.textContent = '❌ Username atau password salah.' + (failState.count ? ' (' + failState.count + '/' + MAX_FAIL_ATTEMPTS + ')' : '');
                             }
                             loginError.style.display = 'block';
                         }
@@ -688,13 +711,14 @@
                     return false;
                 }
 
-                // === SUCCESS PATH ===
-                clearFailState();
+                clearFailedAttempts();
+                setSession(result.username, result.isAdmin);
+
                 setTimeout(function () {
-                    showSpinnerSuccess('Berhasil! Mengalihkan...');
+                    showSpinnerSuccess(result.isAdmin ? 'Admin berhasil masuk...' : 'Berhasil! Mengalihkan...');
                     setTimeout(function () {
-                        setSession(result.username, result.isAdmin);
-                        hideLoginOverlaySmooth(function () {
+                        if (loginOverlay) loginOverlay.classList.add('fade-out');
+                        setTimeout(function () {
                             if (result.isAdmin) {
                                 showAdminApp(result.username, true);
                                 showToast('🛡️ Selamat datang Admin, ' + result.username, 'success');
@@ -702,47 +726,45 @@
                                 showMainApp(result.username, true);
                                 showToast('✅ Selamat datang, ' + result.username, 'success');
                             }
+                            if (loginOverlay) {
+                                loginOverlay.classList.add('hidden');
+                                loginOverlay.classList.remove('fade-out');
+                            }
+                            hideSpinner();
+                            setFormDisabled(false);
                             loginInProgress = false;
-                        });
+                        }, FADE_OUT_MS);
                     }, SUCCESS_HOLD_MS);
                 }, SUCCESS_SPIN_MS);
 
                 return true;
             }
 
+
             (function initAuth() {
                 if (!loginOverlay) return;
-                const users = getUsers();
-                if (users.length === 0) {
-                    if (mainApp) showMainApp('guest');
-                    return;
-                }
+
+                // Verifikasi session token ke server (Supabase-backed)
+                const token = getAuthToken();
                 const sess = readSession();
-                if (sess && sess.u) {
-                    const user = getUserByUsername(sess.u);
-                    if (user) {
-                        // re-validate expiry
-                        if (user.expiryDate) {
-                            const expDate = new Date(String(user.expiryDate));
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            if (!isNaN(expDate.getTime()) && today > expDate) {
-                                clearSession();
-                                showLoginScreen();
-                                return;
-                            }
-                        }
-                        if (user.isAdmin || sess.a) {
-                            showAdminApp(sess.u);
+                if (token && sess && sess.u) {
+                    apiFetch('/api/auth/me').then(function (r) {
+                        if (r.body && r.body.ok) {
+                            if (r.body.isAdmin) showAdminApp(r.body.username);
+                            else showMainApp(r.body.username);
                         } else {
-                            showMainApp(sess.u);
+                            clearSession();
+                            showLoginScreen();
                         }
-                        return;
-                    }
-                    clearSession();
+                    }).catch(function () {
+                        clearSession();
+                        showLoginScreen();
+                    });
+                    return;
                 }
                 showLoginScreen();
             })();
+
 
             if (loginForm) {
                 loginForm.addEventListener('submit', function (e) {
@@ -794,46 +816,69 @@
             }
 
             function renderAdminUserTable() {
-                if (!adminUserTableBody) return;
-                const users = getUsers();
-                const rows = [];
-                users.forEach(function (u, idx) {
-                    const isAdminAcc = !!u.isAdmin;
-                    const devices = getDevicesForUser(u.username);
-                    const maxDev = u.maxDevices == null ? '∞' : String(u.maxDevices);
-                    const srcBadge = isAdminAcc
-                        ? '<span class="admin-badge admin">ADMIN</span>'
-                        : (u._source === 'hardcoded'
-                            ? '<span class="admin-badge hardcoded">hardcoded</span>'
-                            : '<span class="admin-badge managed">managed</span>');
-                    const expiryStr = u.expiryDate ? escapeHtml(String(u.expiryDate)) : '—';
-                    let actions = '';
-                    if (isAdminAcc) {
-                        actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
-                    } else {
-                        actions = '<div class="admin-actions">';
-                        if (u._source === 'managed') {
-                            actions += '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>';
-                        }
-                        // Tombol Hapus di SETIAP akun (kecuali admin)
-                        actions += '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>';
-                        actions += '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>';
-                        actions += '</div>';
+                const tbody = document.getElementById('adminUserTableBody');
+                if (!tbody) return;
+                tbody.innerHTML = '<tr><td colspan="6">Memuat dari Supabase...</td></tr>';
+                refreshUsersFromApi().then(function (users) {
+                    tbody.innerHTML = '';
+                    if (!users.length) {
+                        tbody.innerHTML = '<tr><td colspan="6">Belum ada user</td></tr>';
+                        return;
                     }
-                    rows.push(
-                        '<tr>' +
-                        '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +
-                        '<td class="pwd-mask" title="' + escapeHtml(u.password) + '">' + escapeHtml(maskPassword(u.password)) + '</td>' +
-                        '<td>' + escapeHtml(maxDev) + '</td>' +
-                        '<td>' + devices.length + (u.maxDevices != null ? ' / ' + u.maxDevices : '') + '</td>' +
-                        '<td>' + expiryStr + '</td>' +
-                        '<td>' + srcBadge + '</td>' +
-                        '<td>' + actions + '</td>' +
-                        '</tr>'
-                    );
+                    users.forEach(function (u) {
+                        const tr = document.createElement('tr');
+                        const maxDev = u.isAdmin ? '∞' : (u.maxDevices == null ? '∞' : String(u.maxDevices));
+                        const exp = u.expiryDate || '—';
+                        const srcLabel = u._source === 'supabase' ? 'cloud' : (u._source || '');
+                        const devCount = u.deviceCount != null ? u.deviceCount : '?';
+                        tr.innerHTML =
+                            '<td>' + escapeHTML(u.username) + (u.isAdmin ? ' <span class="badge">admin</span>' : '') + '</td>' +
+                            '<td>' + maxDev + '</td>' +
+                            '<td>' + escapeHTML(String(exp)) + '</td>' +
+                            '<td>' + devCount + '</td>' +
+                            '<td>' + escapeHTML(srcLabel) + '</td>' +
+                            '<td class="admin-actions"></td>';
+                        const actions = tr.querySelector('.admin-actions');
+                        if (!u.isAdmin) {
+                            const editBtn = document.createElement('button');
+                            editBtn.className = 'btn btn-sm';
+                            editBtn.textContent = 'Edit';
+                            editBtn.addEventListener('click', function () { fillAdminFormForEdit(u.username); });
+                            const resetBtn = document.createElement('button');
+                            resetBtn.className = 'btn btn-sm';
+                            resetBtn.textContent = 'Reset device';
+                            resetBtn.addEventListener('click', async function () {
+                                if (!confirm('Reset device untuk ' + u.username + '?')) return;
+                                const r = await apiFetch('/api/users/' + encodeURIComponent(u.username) + '/reset-devices', { method: 'POST', body: '{}' });
+                                if (r.body && r.body.ok) {
+                                    showToast('Device di-reset', 'success');
+                                    renderAdminUserTable();
+                                } else showToast('Gagal reset device', 'error');
+                            });
+                            const delBtn = document.createElement('button');
+                            delBtn.className = 'btn btn-sm';
+                            delBtn.textContent = 'Hapus';
+                            delBtn.addEventListener('click', async function () {
+                                if (!confirm('Hapus user ' + u.username + '?')) return;
+                                const r = await apiFetch('/api/users/' + encodeURIComponent(u.username), { method: 'DELETE' });
+                                if (r.body && r.body.ok) {
+                                    showToast('User dihapus', 'success');
+                                    renderAdminUserTable();
+                                } else showToast('Gagal hapus: ' + ((r.body && r.body.error) || ''), 'error');
+                            });
+                            actions.appendChild(editBtn);
+                            actions.appendChild(resetBtn);
+                            actions.appendChild(delBtn);
+                        } else {
+                            actions.textContent = '—';
+                        }
+                        tbody.appendChild(tr);
+                    });
+                }).catch(function (e) {
+                    tbody.innerHTML = '<tr><td colspan="6">Gagal memuat: ' + escapeHTML(String(e.message || e)) + '</td></tr>';
                 });
-                adminUserTableBody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">Belum ada user</td></tr>';
             }
+
 
             function showAdminFormError(msg) {
                 if (!adminFormError) return;
@@ -862,7 +907,7 @@
                     adminUsername.value = u.username;
                     adminUsername.disabled = true; // username tidak diubah saat edit
                 }
-                if (adminPassword) adminPassword.value = u.password;
+                if (adminPassword) adminPassword.value = ''; // password tidak dikirim dari server; isi untuk ganti
                 if (adminMaxDevices) adminMaxDevices.value = u.maxDevices == null ? '' : u.maxDevices;
                 if (adminExpiry) adminExpiry.value = u.expiryDate || '';
                 if (adminEditIndex) adminEditIndex.value = u.username; // pakai username sebagai key
@@ -879,7 +924,7 @@
             }
 
             if (adminUserForm) {
-                adminUserForm.addEventListener('submit', function (e) {
+                adminUserForm.addEventListener('submit', async function (e) {
                     e.preventDefault();
                     showAdminFormError('');
                     const uname = adminUsername ? String(adminUsername.value || '').trim() : '';
@@ -887,119 +932,60 @@
                     const maxDevRaw = adminMaxDevices ? adminMaxDevices.value : '';
                     const maxDev = maxDevRaw === '' || maxDevRaw == null ? null : Math.max(1, Math.min(99, parseInt(maxDevRaw, 10) || 1));
                     const exp = adminExpiry && adminExpiry.value ? adminExpiry.value : null;
-                    const editKey = adminEditIndex ? String(adminEditIndex.value || '') : '-1';
+                    const editKey = adminEditIndex ? String(adminEditIndex.value || '') : '';
+                    const isEdit = editKey && editKey !== '-1' && editKey !== '';
 
                     if (!uname || uname.length < 1 || uname.length > 64) {
                         showAdminFormError('Username wajib diisi (1–64 karakter).');
                         return;
                     }
-                    if (!pass || pass.length < 1 || pass.length > 128) {
-                        showAdminFormError('Password wajib diisi (1–128 karakter).');
+                    if (!isEdit && (!pass || pass.length < 3)) {
+                        showAdminFormError('Password wajib diisi (min 3 karakter) untuk user baru.');
+                        return;
+                    }
+                    if (pass && pass.length > 0 && pass.length < 3) {
+                        showAdminFormError('Password minimal 3 karakter.');
                         return;
                     }
 
-                    // Jangan izinkan membuat/edit jadi admin
-                    const existing = getUserByUsername(uname);
-                    if (existing && existing.isAdmin) {
-                        showAdminFormError('Tidak bisa mengubah akun admin khusus.');
-                        return;
-                    }
-
-                    const managed = readManagedUsers();
-                    const hard = getHardcodedUsers();
-                    const hardNames = {};
-                    hard.forEach(function (r) { hardNames[r.username.toLowerCase()] = r; });
-
-                    // Hanya managed users yang bisa di-edit/tambah/hapus lewat panel.
-                    // User hardcoded ubah lewat credentials.js. Reset Device tetap tersedia untuk semua.
-
-                    if (editKey && editKey !== '-1') {
-                        const idx = managed.findIndex(function (r) {
-                            return r.username.toLowerCase() === editKey.toLowerCase();
-                        });
-                        if (idx < 0) {
-                            showAdminFormError('User hardcoded hanya bisa diubah lewat credentials.js. Panel ini untuk user managed.');
-                            return;
-                        }
-                        managed[idx].password = pass;
-                        managed[idx].maxDevices = maxDev;
-                        managed[idx].expiryDate = exp;
-                        writeManagedUsers(managed);
-                        unmarkUserDeleted(uname);
-                        showToast('✅ User diperbarui', 'success');
-                    } else {
-                        if (hardNames[uname.toLowerCase()] || managed.some(function (r) {
-                            return r.username.toLowerCase() === uname.toLowerCase();
-                        })) {
-                            showAdminFormError('Username sudah dipakai.');
-                            return;
-                        }
-                        managed.push({
-                            username: uname,
-                            password: pass,
-                            maxDevices: maxDev,
-                            expiryDate: exp
-                        });
-                        writeManagedUsers(managed);
-                        unmarkUserDeleted(uname);
-                        showToast('✅ User baru ditambahkan', 'success');
-                    }
-
-                    resetAdminForm();
-                    renderAdminUserTable();
-                });
-            }
-
-            if (adminUserTableBody) {
-                adminUserTableBody.addEventListener('click', function (e) {
-                    const btn = e.target.closest('button[data-action]');
-                    if (!btn) return;
-                    const action = btn.getAttribute('data-action');
-                    const uname = btn.getAttribute('data-user');
-                    if (!uname) return;
-
-                    if (action === 'edit') {
-                        fillAdminFormForEdit(uname);
-                    } else if (action === 'reset-device') {
-                        if (confirm('Reset semua device untuk user "' + uname + '"?\nSetelah reset, user bisa login lagi dari device baru (sampai batas max).')) {
-                            resetDevicesForUser(uname);
-                            renderAdminUserTable();
-                            showToast('Device di-reset untuk ' + uname, 'success');
-                        }
-                    } else if (action === 'delete') {
-                        const u = getUserByUsername(uname);
-                        if (!u || u.isAdmin) {
-                            showToast('Akun admin tidak bisa dihapus', 'error');
-                            return;
-                        }
-                        const srcNote = u._source === 'hardcoded'
-                            ? '\n\nCatatan: user ini dari credentials.js. Hapus di panel hanya menonaktifkan di browser ini (blocklist lokal).'
-                            : '\n\nUser managed akan dihapus dari localStorage.';
-                        if (confirm(
-                            'Hapus akun ini?\n\n' +
-                            'Username: ' + uname + '\n' +
-                            'Password: ' + maskPassword(u.password) + '\n' +
-                            'Sumber: ' + (u._source || '-') +
-                            srcNote +
-                            '\n\nDevice registry juga di-reset.'
-                        )) {
-                            // Hapus dari managed jika ada
-                            const managed = readManagedUsers().filter(function (r) {
-                                return r.username.toLowerCase() !== uname.toLowerCase();
+                    try {
+                        if (isEdit) {
+                            const body = { maxDevices: maxDev, expiryDate: exp };
+                            if (pass) body.password = pass;
+                            const r = await apiFetch('/api/users/' + encodeURIComponent(editKey), {
+                                method: 'PUT',
+                                body: JSON.stringify(body)
                             });
-                            writeManagedUsers(managed);
-                            // Blocklist agar hardcoded juga tidak muncul / tidak bisa login di browser ini
-                            markUserDeleted(uname);
-                            resetDevicesForUser(uname);
-                            renderAdminUserTable();
-                            showToast('🗑️ Akun "' + uname + '" dihapus', 'info');
-                            if (adminEditIndex && String(adminEditIndex.value).toLowerCase() === uname.toLowerCase()) {
-                                resetAdminForm();
+                            if (!r.body || !r.body.ok) {
+                                showAdminFormError('Gagal update: ' + ((r.body && r.body.error) || r.status));
+                                return;
                             }
+                            showToast('User diperbarui', 'success');
+                        } else {
+                            const r = await apiFetch('/api/users', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    username: uname,
+                                    password: pass,
+                                    maxDevices: maxDev,
+                                    expiryDate: exp,
+                                    isAdmin: false
+                                })
+                            });
+                            if (!r.body || !r.body.ok) {
+                                showAdminFormError('Gagal simpan: ' + ((r.body && r.body.error) || r.status));
+                                return;
+                            }
+                            showToast('User ditambahkan', 'success');
                         }
+                        resetAdminForm();
+                        renderAdminUserTable();
+                    } catch (err) {
+                        showAdminFormError('Network error: ' + (err.message || err));
                     }
                 });
             }
+
 
             // Bersihkan form Username & Password
             const adminClearFormBtn = document.getElementById('adminClearFormBtn');
@@ -1013,29 +999,30 @@
             // Hapus semua akun non-admin (tombol di header daftar)
             const adminDeleteAllManagedBtn = document.getElementById('adminDeleteAllManagedBtn');
             if (adminDeleteAllManagedBtn) {
-                adminDeleteAllManagedBtn.addEventListener('click', function () {
+                adminDeleteAllManagedBtn.addEventListener('click', async function () {
+                    try {
+                        await refreshUsersFromApi();
+                    } catch (e) {
+                        showToast('Gagal memuat user', 'error');
+                        return;
+                    }
                     const all = getUsers().filter(function (u) { return !u.isAdmin; });
                     if (!all.length) {
                         showToast('Tidak ada akun non-admin untuk dihapus', 'warning');
                         return;
                     }
-                    if (!confirm(
-                        'Hapus SEMUA akun (kecuali admin)?\n\n' +
-                        'Jumlah: ' + all.length + ' akun\n' +
-                        '• Managed → dihapus dari localStorage\n' +
-                        '• Hardcoded → dinonaktifkan di browser ini (blocklist)\n\n' +
-                        'Tindakan ini tidak bisa dibatalkan (kecuali clear localStorage).'
-                    )) return;
-                    all.forEach(function (r) {
-                        markUserDeleted(r.username);
-                        resetDevicesForUser(r.username);
-                    });
-                    writeManagedUsers([]);
+                    if (!confirm('Hapus SEMUA akun non-admin dari Supabase?\n\nJumlah: ' + all.length)) return;
+                    let n = 0;
+                    for (let i = 0; i < all.length; i++) {
+                        const r = await apiFetch('/api/users/' + encodeURIComponent(all[i].username), { method: 'DELETE' });
+                        if (r.body && r.body.ok) n++;
+                    }
                     resetAdminForm();
                     renderAdminUserTable();
-                    showToast('🗑️ ' + all.length + ' akun dihapus', 'info');
+                    showToast('🗑️ ' + n + ' akun dihapus dari database', 'info');
                 });
             }
+
 
             // ============================================================
             // TUTORIAL POPUP (setelah login)
