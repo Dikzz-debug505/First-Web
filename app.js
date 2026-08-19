@@ -752,7 +752,7 @@
                         actions = '<div class="admin-actions">';
                         if (u._source === 'managed') {
                             actions += '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>';
-                            actions += '<button type="button" class="btn btn-sm" data-action="delete" data-user="' + escapeHtml(u.username) + '" style="color:#c5221f;">Hapus</button>';
+                            actions += '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>';
                         }
                         actions += '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>';
                         actions += '</div>';
@@ -902,17 +902,63 @@
                             showToast('Device di-reset untuk ' + uname, 'success');
                         }
                     } else if (action === 'delete') {
-                        if (confirm('Hapus user managed "' + uname + '"?')) {
+                        const u = getUserByUsername(uname);
+                        if (!u || u._source !== 'managed' || u.isAdmin) {
+                            showToast('Hanya user managed yang bisa dihapus dari panel', 'error');
+                            return;
+                        }
+                        if (confirm(
+                            'Hapus Username & Password?\n\n' +
+                            'Username: ' + uname + '\n' +
+                            'Password: ' + maskPassword(u.password) + '\n\n' +
+                            'User ini akan dihapus permanen dari panel (localStorage). Device registry juga di-reset.'
+                        )) {
                             const managed = readManagedUsers().filter(function (r) {
                                 return r.username.toLowerCase() !== uname.toLowerCase();
                             });
                             writeManagedUsers(managed);
                             resetDevicesForUser(uname);
                             renderAdminUserTable();
-                            showToast('User dihapus', 'info');
-                            if (adminEditIndex && adminEditIndex.value === uname) resetAdminForm();
+                            showToast('🗑️ Username & Password "' + uname + '" dihapus', 'info');
+                            if (adminEditIndex && String(adminEditIndex.value).toLowerCase() === uname.toLowerCase()) {
+                                resetAdminForm();
+                            }
                         }
                     }
+                });
+            }
+
+            // Bersihkan form Username & Password
+            const adminClearFormBtn = document.getElementById('adminClearFormBtn');
+            if (adminClearFormBtn) {
+                adminClearFormBtn.addEventListener('click', function () {
+                    resetAdminForm();
+                    showToast('Form Username & Password dikosongkan', 'info');
+                });
+            }
+
+            // Hapus semua user managed (Username & Password)
+            const adminDeleteAllManagedBtn = document.getElementById('adminDeleteAllManagedBtn');
+            if (adminDeleteAllManagedBtn) {
+                adminDeleteAllManagedBtn.addEventListener('click', function () {
+                    const managed = readManagedUsers();
+                    if (!managed.length) {
+                        showToast('Tidak ada user managed untuk dihapus', 'warning');
+                        return;
+                    }
+                    if (!confirm(
+                        'Hapus SEMUA Username & Password managed?\n\n' +
+                        'Jumlah: ' + managed.length + ' user\n' +
+                        'User hardcoded di credentials.js tidak terpengaruh.\n\n' +
+                        'Tindakan ini tidak bisa dibatalkan.'
+                    )) return;
+                    managed.forEach(function (r) {
+                        resetDevicesForUser(r.username);
+                    });
+                    writeManagedUsers([]);
+                    resetAdminForm();
+                    renderAdminUserTable();
+                    showToast('🗑️ Semua user managed (' + managed.length + ') dihapus', 'info');
                 });
             }
 

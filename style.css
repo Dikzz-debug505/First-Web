@@ -923,6 +923,27 @@ body {
     font-weight: 600;
     color: var(--text-primary);
 }
+.admin-card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+.admin-card-header-row h2 {
+    margin: 0;
+}
+.btn-danger {
+    background: #5c1a1a;
+    border-color: #c5221f;
+    color: #ff8a80;
+}
+.btn-danger:hover:not(:disabled) {
+    background: #c5221f;
+    border-color: #c5221f;
+    color: #fff;
+}
 .admin-hint {
     font-size: 12px;
     color: var(--text-secondary);

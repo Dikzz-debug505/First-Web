@@ -295,14 +295,18 @@
                     <div class="admin-form-actions">
                         <button type="submit" class="btn btn-primary" id="adminSaveBtn">Simpan User</button>
                         <button type="button" class="btn" id="adminCancelEditBtn" style="display:none;">Batal Edit</button>
+                        <button type="button" class="btn" id="adminClearFormBtn" title="Kosongkan Username &amp; Password">Bersihkan Form</button>
                     </div>
                 </form>
                 <div class="login-error" id="adminFormError" style="display:none; margin-top:10px;"></div>
             </div>
 
             <div class="admin-card">
-                <h2>👥 Daftar User</h2>
-                <p class="admin-hint">User hardcoded di <code>credentials.js</code> + user yang dikelola di sini (disimpan di localStorage browser ini).</p>
+                <div class="admin-card-header-row">
+                    <h2>👥 Daftar User</h2>
+                    <button type="button" class="btn btn-sm btn-danger" id="adminDeleteAllManagedBtn" title="Hapus semua user managed (bukan hardcoded)">Hapus Semua Managed</button>
+                </div>
+                <p class="admin-hint">User hardcoded di <code>credentials.js</code> + user yang dikelola di sini (disimpan di localStorage browser ini). Tombol <strong>Hapus</strong> menghapus Username &amp; Password user managed.</p>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="adminUserTable">
                         <thead>
@@ -326,6 +330,9 @@
                 <strong>Catatan penting:</strong>
                 <ul>
                     <li>Akun <code>master</code> adalah admin khusus dan tidak bisa dihapus/diubah lewat panel ini.</li>
+                    <li>Tombol <strong>Hapus</strong> di tabel menghapus Username &amp; Password user <em>managed</em>. User hardcoded hanya bisa diubah lewat <code>credentials.js</code>.</li>
+                    <li><strong>Hapus Semua Managed</strong> menghapus seluruh user yang ditambahkan lewat panel (bukan hardcoded).</li>
+                    <li><strong>Bersihkan Form</strong> mengosongkan field Username &amp; Password di form tambah/edit.</li>
                     <li>Batas device disimpan di localStorage browser ini. Setiap browser/device punya storage sendiri, jadi batas bersifat lokal per browser.</li>
                     <li>Untuk reset device suatu user, klik tombol "Reset Device" di tabel.</li>
                     <li>User yang ditambahkan di panel ini hanya tersimpan di browser ini (localStorage). Untuk permanen, salin ke <code>credentials.js</code>.</li>
