@@ -2,7 +2,7 @@
   "name": "mlbb-unity-tools",
   "private": true,
   "version": "1.0.0",
-  "description": "MLBB Unity Tools — login via Vercel API + Supabase",
+  "description": "MLBB Unity Tool",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1"
   }

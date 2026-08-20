@@ -8,12 +8,15 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
-    <link rel="stylesheet" href="style.css?v=202608201530">
+    <link rel="stylesheet" href="style.css?v=202608201605">
 </head>
 <body>
 
-    <!-- ===================== LOGIN GATE ===================== -->
     <div class="login-overlay" id="loginOverlay">
+        <span class="login-secure-pill" id="loginSecurePill" title="Secure connection">
+            <span class="login-secure-dot"></span>
+            <span class="login-secure-label" data-i18n="login.secure">SECURE</span>
+        </span>
         <div class="login-card">
             <div class="login-brand">
                 <div class="login-icon">🔐</div>
@@ -46,7 +49,6 @@
         </div>
     </div>
 
-    <!-- ===================== SIDE MENU (strip tiga) ===================== -->
     <div class="side-menu-backdrop" id="sideMenuBackdrop" hidden></div>
     <aside class="side-menu-panel" id="sideMenuPanel" aria-hidden="true">
         <div class="side-menu-top">
@@ -95,7 +97,6 @@
 
     <div class="container" id="mainApp" style="display:none;">
 
-        <!-- HEADER -->
         <div class="header">
             <div class="header-left">
                 <button type="button" class="menu-strip-btn" id="sideMenuToggle" title="Menu" aria-label="Buka menu">
@@ -121,16 +122,12 @@
         </div>
         <audio id="bgmAudio" src="bgm.mp3" loop preload="auto"></audio>
 
-        <!-- MENU TABS -->
         <div class="menu-tabs">
             <div class="menu-tab active" data-panel="panel-hero" data-i18n="tab.hero">🧬 Hero.bytes Viewer</div>
             <div class="menu-tab" data-panel="panel-doc" data-i18n="tab.doc">📦 DocumentExtractor</div>
             <div class="menu-tab" data-panel="panel-go" data-i18n="tab.go">⚡ GameObject Overrider</div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- PANEL 1: HERO.BYTES VIEWER                                    -->
-        <!-- ============================================================ -->
         <div class="menu-panel active" id="panel-hero">
 
             <div class="upload-zone" id="heroDropZone">
@@ -156,7 +153,6 @@
                 <div class="stat-item"><span class="label" data-i18n="stat.status">status</span><span class="value" id="heroStatStatus" style="font-size:16px; color:var(--text-secondary);" data-i18n="stat.ready">siap</span></div>
             </div>
 
-            <!-- Bar pilih hero (muncul setelah scan) -->
             <div class="hero-picker-wrap" id="heroPickerWrap" style="display:none;">
                 <label class="hero-picker-label" for="heroSelect" data-i18n="hero.pick_label">🧬 Pilih hero</label>
                 <div class="hero-picker-row">
@@ -182,16 +178,12 @@
             </div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- PANEL 2: DOCUMENTEXTRACTOR                                   -->
-        <!-- ============================================================ -->
         <div class="menu-panel" id="panel-doc">
 
             <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
                 <span data-i18n-html="doc.desc">Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML.</span>
             </p>
 
-            <!-- UPLOAD Document.unity3d -->
             <div class="upload-zone" id="docDropZone">
                 <div class="upload-icon">📦</div>
                 <input type="file" id="docFileInput" accept=".unity3d" />
@@ -203,13 +195,11 @@
                 </div>
             </div>
 
-            <!-- PROGRESS DOC -->
             <div class="progress-wrap" id="docProgressWrap">
                 <div class="progress-bar" id="docProgressBar"></div>
                 <div class="progress-text" id="docProgressText">0%</div>
             </div>
 
-            <!-- STATS DOC -->
             <div class="stats-grid">
                 <div class="stat-item"><span class="label" data-i18n="stat.file">file</span><span class="value" id="docStatFile">-</span></div>
                 <div class="stat-item"><span class="label">entries</span><span class="value" id="docStatEntries">0</span></div>
@@ -217,14 +207,12 @@
                 <div class="stat-item"><span class="label" data-i18n="stat.status">status</span><span class="value" id="docStatStatus" style="font-size:16px; color:var(--text-secondary);" data-i18n="stat.ready">siap</span></div>
             </div>
 
-            <!-- FILE LIST -->
             <div id="docFileListContainer">
                 <div class="file-list" id="docFileList">
                     <div class="no-data" style="padding:12px;"><span data-i18n="doc.no_files">belum ada file, ekstrak dulu</span></div>
                 </div>
             </div>
 
-            <!-- EDITOR + EXPORT/IMPORT -->
             <div style="margin:14px 0; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
                 <div>
                     <label style="font-size:13px; color:var(--text-secondary); margin-right:6px;"><span data-i18n="doc.edit_label">📝 edit file:</span></label>
@@ -247,7 +235,6 @@
                 <button class="btn btn-sm" id="docApplyEditBtn" style="display:none; margin-top:8px;" disabled data-i18n="btn.apply">terapkan perubahan</button>
             </div>
 
-            <!-- UPLOAD ResCheckConf.xml & BinaryPatchMD5.xml -->
             <div style="margin:14px 0; display:flex; flex-wrap:wrap; gap:14px; align-items:center; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
                 <span style="font-size:13px; color:var(--text-secondary);"><span data-i18n="doc.patch_xml">🔧 Patch XML:</span></span>
                 <label class="mini-upload" id="resCheckLabel">
@@ -263,10 +250,8 @@
                 <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled data-i18n="doc.run_patch">🔧 jalankan patch</button>
             </div>
 
-            <!-- PATCH LOG -->
             <div class="xml-patch-log" id="docPatchLog"></div>
 
-            <!-- PACK & DOWNLOAD -->
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
                 <button class="btn btn-warning" id="docPackBtn" disabled data-i18n="doc.pack">📦 pack ulang &amp; download</button>
                 <button class="btn" id="docResetBtn" disabled data-i18n="btn.reset">↺ reset</button>
@@ -274,9 +259,6 @@
 
         </div>
 
-        <!-- ============================================================ -->
-        <!-- PANEL 3: GAMEOBJECT OVERRIDER & CAB REPLACER                 -->
-        <!-- ============================================================ -->
         <div class="menu-panel" id="panel-go">
 
             <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
@@ -324,12 +306,10 @@
 
         </div>
 
-        <!-- FOOTER -->
         <div class="footer" data-i18n="footer">semua proses di sini, tidak ada data yang dikirim ke mana pun</div>
     </div>
 
 
-    <!-- ===================== ADMIN PANEL ===================== -->
     <div class="container" id="adminApp" style="display:none;">
         <div class="header">
             <div class="header-left">
@@ -423,10 +403,8 @@
         </div>
     </div>
 
-    <!-- TOAST -->
     <div class="toast" id="toast"></div>
 
-    <!-- TUTORIAL POPUP -->
     <div class="tutorial-overlay" id="tutorialOverlay">
         <div class="tutorial-modal">
             <div class="tutorial-header">
@@ -474,7 +452,6 @@
         </div>
     </div>
 
-    <!-- Floating Music Player -->
     <div id="musicFloat" class="music-float" style="display:none;" aria-hidden="true">
         <div id="musicTrackMenu" class="music-track-menu" hidden>
             <div class="music-track-menu-title" data-i18n="music.pick">Pilih Lagu</div>
@@ -495,8 +472,8 @@
         </button>
     </div>
 
-    <script src="i18n.js?v=202608201530"></script>
-    <script src="credentials.js?v=202608201530"></script>
-    <script src="app.js?v=202608201530" defer></script>
+    <script src="i18n.js?v=202608201605"></script>
+    <script src="credentials.js?v=202608201605"></script>
+    <script src="app.js?v=202608201605" defer></script>
 </body>
 </html>

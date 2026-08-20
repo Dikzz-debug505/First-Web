@@ -1,8 +1,4 @@
-/* ============================================================
-   SYSTEMIC UI v2.0 — Dark, terminal-inspired, no fluff
-   ============================================================ */
 
-/* ----- RESET & BASE ----- */
 * {
     margin: 0;
     padding: 0;
@@ -49,7 +45,6 @@ body {
     margin: 0 auto;
 }
 
-/* ----- SCROLLBAR ----- */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -65,7 +60,6 @@ body {
     background: var(--text-muted);
 }
 
-/* ----- HEADER ----- */
 .header {
     display: flex;
     justify-content: space-between;
@@ -112,7 +106,6 @@ body {
     font-family: monospace;
 }
 
-/* ----- MENU TABS (Systemic pill) ----- */
 .menu-tabs {
     display: flex;
     gap: 4px;
@@ -158,7 +151,6 @@ body {
     display: block;
 }
 
-/* ----- BUTTONS (Systemic) ----- */
 .btn {
     padding: 6px 14px;
     border: 1px solid var(--border-color);
@@ -214,7 +206,6 @@ body {
     color: #0d0f12;
 }
 
-/* ===== Floating Music FAB ===== */
 .music-float {
     position: fixed;
     right: 18px;
@@ -377,7 +368,6 @@ body {
     background: var(--bg-elevated);
 }
 
-/* ----- UPLOAD ZONE (Systemic) ----- */
 .upload-zone {
     background: var(--bg-secondary);
     border: 1px dashed var(--border-color);
@@ -428,7 +418,6 @@ body {
     margin-top: 14px;
 }
 
-/* ----- PROGRESS ----- */
 .progress-wrap {
     background: var(--bg-secondary);
     border-radius: var(--radius);
@@ -463,7 +452,6 @@ body {
     letter-spacing: 0.3px;
 }
 
-/* ----- STATS (Systemic grid) ----- */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -493,8 +481,6 @@ body {
     font-family: monospace;
 }
 
-/* ----- GLOBAL TOGGLE ----- */
-/* ----- HERO PICKER ----- */
 .hero-picker-wrap {
     margin: 14px 0 16px;
     padding: 14px 16px;
@@ -550,7 +536,6 @@ body {
     color: var(--text-muted);
 }
 
-/* ----- HERO CARDS (Systemic) ----- */
 .hero-card {
     background: var(--bg-secondary);
     border-radius: var(--radius);
@@ -605,7 +590,6 @@ body {
     border-radius: var(--radius);
 }
 
-/* ----- TABLE (Systemic) ----- */
 .hero-body table {
     width: 100%;
     border-collapse: collapse;
@@ -649,7 +633,6 @@ body {
     font-size: 12px;
 }
 
-/* ----- EDIT INPUT (Systemic) ----- */
 .edit-input {
     background: var(--bg-primary);
     color: var(--text-primary);
@@ -684,7 +667,6 @@ body {
     border-color: var(--text-muted);
 }
 
-/* ----- TOAST (Systemic) ----- */
 .toast {
     position: fixed;
     bottom: 20px;
@@ -714,7 +696,6 @@ body {
 .toast.error { border-left-color: var(--danger); }
 .toast.warning { border-left-color: var(--warning); }
 
-/* ----- FILE LIST (Systemic) ----- */
 .file-list {
     background: var(--bg-secondary);
     border-radius: var(--radius);
@@ -754,7 +735,6 @@ body {
     gap: 4px;
 }
 
-/* ----- XML PATCH LOG (Systemic) ----- */
 .xml-patch-log {
     background: var(--bg-primary);
     color: var(--text-secondary);
@@ -774,7 +754,6 @@ body {
     display: block;
 }
 
-/* ----- MINI UPLOAD (Systemic) ----- */
 .mini-upload {
     display: inline-block;
     padding: 3px 10px;
@@ -795,7 +774,6 @@ body {
     display: none;
 }
 
-/* ----- FOOTER ----- */
 .footer {
     margin-top: 32px;
     text-align: center;
@@ -806,7 +784,6 @@ body {
     letter-spacing: 0.3px;
 }
 
-/* ----- LOGIN OVERLAY (Systemic) ----- */
 .login-overlay {
     position: fixed;
     inset: 0;
@@ -916,7 +893,6 @@ body {
     color: var(--text-secondary);
 }
 
-/* ----- SPINNER (Systemic) ----- */
 .login-spinner {
     display: none;
     flex-direction: column;
@@ -968,7 +944,6 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* ----- TUTORIAL (Systemic) ----- */
 .tutorial-overlay {
     position: fixed;
     inset: 0;
@@ -1076,7 +1051,6 @@ body {
     cursor: pointer;
 }
 
-/* ----- RESPONSIVE ----- */
 @media (max-width: 680px) {
     .container { padding: 14px 12px; }
     .header-left h1 { font-size: 17px; }
@@ -1089,7 +1063,6 @@ body {
 @media (max-width: 480px) {
     .login-card { padding: 20px 16px 16px; }
 }
-/* ===== ADMIN PANEL ===== */
 .admin-section {
     display: flex;
     flex-direction: column;
@@ -1270,10 +1243,6 @@ body {
 }
 
 
-/* ============================================================
-   SYSTEM UI REDESIGN — v3.0
-   Visual-only overhaul. Existing IDs/classes preserved for app.js.
-   ============================================================ */
 :root{
   --sys-bg:#070a0f;
   --sys-panel:#0c1118;
@@ -1315,7 +1284,6 @@ body:before{
 }
 .container{max-width:1500px;padding:26px 30px 44px;position:relative;z-index:1}
 
-/* top application bar */
 .header{
   min-height:68px;
   margin:0 0 16px;
@@ -1363,7 +1331,6 @@ body:before{
   color:var(--sys-muted);
 }
 
-/* system navigation */
 .menu-tabs{
   display:flex;gap:5px;padding:5px;margin-bottom:14px;
   border:1px solid var(--sys-line);
@@ -1389,7 +1356,6 @@ body:before{
 }
 .menu-tab.active:before{content:"● ";font-size:8px;vertical-align:1px}
 
-/* main panels */
 .menu-panel{
   border:1px solid var(--sys-line);
   border-radius:var(--sys-radius);
@@ -1872,4 +1838,38 @@ body.side-menu-open{overflow:hidden}
 .lang-switch-menu .lang-btn{flex:1;text-align:center}
 #loginLangSwitch{
   display:flex;justify-content:center;margin:0 0 14px;
+}
+
+/* Login page — SECURE badge (top-right) */
+.login-secure-pill{
+  position:fixed;
+  top:16px;
+  right:16px;
+  z-index:10001;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid var(--sys-line, rgba(255,255,255,.1));
+  background:#080d13;
+  border-radius:20px;
+  padding:6px 12px 6px 10px;
+  font:600 10px var(--sys-mono, monospace);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--sys-ok, #5ee6a8);
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+  pointer-events:none;
+  user-select:none;
+}
+.login-secure-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--sys-ok, #5ee6a8);
+  box-shadow:0 0 0 0 rgba(94,230,168,.55);
+  animation:sysPulse 1.8s ease-out infinite;
+}
+.login-overlay.hidden .login-secure-pill{
+  display:none;
+}
+@media (max-width:480px){
+  .login-secure-pill{top:12px;right:12px;padding:5px 10px 5px 8px;font-size:9px}
 }
