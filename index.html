@@ -8,7 +8,7 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
-    <link rel="stylesheet" href="style.css?v=202608201400">
+    <link rel="stylesheet" href="style.css?v=202608201530">
 </head>
 <body>
 
@@ -137,10 +137,10 @@
                 <div class="upload-icon">📄</div>
                 <input type="file" id="heroFileInput" accept=".bytes" />
                 <label for="heroFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="hero.pick">pilih Hero.bytes</label>
-                <div class="file-name" id="heroFileName">upload file ke sini, atau pilih secara manual</div>
+                <div class="file-name" id="heroFileName" data-i18n="upload.hint">upload file ke sini, atau pilih secara manual</div>
                 <div class="file-size" id="heroFileSize"></div>
                 <div class="action-row">
-                    <button class="btn btn-primary" id="heroScanBtn" disabled>🔍 scan semua hero</button>
+                    <button class="btn btn-primary" id="heroScanBtn" disabled data-i18n="btn.scan">🔍 scan semua hero</button>
                 </div>
             </div>
 
@@ -150,35 +150,35 @@
             </div>
 
             <div class="stats-grid">
-                <div class="stat-item"><span class="label">hero</span><span class="value" id="heroStatHero">0</span></div>
-                <div class="stat-item"><span class="label">nilai stat</span><span class="value" id="heroStatValues">0</span></div>
-                <div class="stat-item"><span class="label">ukuran</span><span class="value" id="heroStatSize">-</span></div>
-                <div class="stat-item"><span class="label">status</span><span class="value" id="heroStatStatus" style="font-size:16px; color:var(--text-secondary);">siap</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.hero">hero</span><span class="value" id="heroStatHero">0</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.values">nilai stat</span><span class="value" id="heroStatValues">0</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.size">ukuran</span><span class="value" id="heroStatSize">-</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.status">status</span><span class="value" id="heroStatStatus" style="font-size:16px; color:var(--text-secondary);" data-i18n="stat.ready">siap</span></div>
             </div>
 
             <!-- Bar pilih hero (muncul setelah scan) -->
             <div class="hero-picker-wrap" id="heroPickerWrap" style="display:none;">
-                <label class="hero-picker-label" for="heroSelect">🧬 Pilih hero</label>
+                <label class="hero-picker-label" for="heroSelect" data-i18n="hero.pick_label">🧬 Pilih hero</label>
                 <div class="hero-picker-row">
-                    <input type="search" id="heroSearch" class="hero-search" placeholder="Cari nama hero..." autocomplete="off" />
+                    <input type="search" id="heroSearch" class="hero-search" data-i18n-placeholder="hero.search_ph" placeholder="Cari nama hero..." autocomplete="off" />
                     <select id="heroSelect" class="hero-select">
-                        <option value="">— pilih hero —</option>
+                        <option value="" data-i18n="hero.select_ph">— pilih hero —</option>
                     </select>
                 </div>
                 <div class="hero-picker-meta" id="heroPickerMeta"></div>
             </div>
 
             <div class="global-toggle-row" id="heroGlobalToggle" style="display:none;">
-                <span class="label">☕ semua hero</span>
-                <button class="btn btn-toggle btn-sm" id="heroGlobalOpen">buka</button>
-                <button class="btn btn-toggle btn-sm" id="heroGlobalClose">tutup</button>
+                <span class="label" data-i18n="hero.all">☕ semua hero</span>
+                <button class="btn btn-toggle btn-sm" id="heroGlobalOpen" data-i18n="hero.open">buka</button>
+                <button class="btn btn-toggle btn-sm" id="heroGlobalClose" data-i18n="hero.close">tutup</button>
             </div>
 
             <div id="heroResult"></div>
 
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
-                <button class="btn" id="heroResetBtn" disabled>↺ reset</button>
-                <button class="btn btn-warning" id="heroDownloadBtn" disabled>⬇ simpan</button>
+                <button class="btn" id="heroResetBtn" disabled data-i18n="btn.reset">↺ reset</button>
+                <button class="btn btn-warning" id="heroDownloadBtn" disabled data-i18n="btn.save">⬇ simpan</button>
             </div>
         </div>
 
@@ -188,7 +188,7 @@
         <div class="menu-panel" id="panel-doc">
 
             <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
-                Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML.
+                <span data-i18n-html="doc.desc">Ekstrak <strong>Document.unity3d</strong>, lihat/ubah file, export/import per file, pack ulang, dan patch XML.</span>
             </p>
 
             <!-- UPLOAD Document.unity3d -->
@@ -196,10 +196,10 @@
                 <div class="upload-icon">📦</div>
                 <input type="file" id="docFileInput" accept=".unity3d" />
                 <label for="docFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="doc.pick">pilih Document.unity3d</label>
-                <div class="file-name" id="docFileName">upload Document.unity3d</div>
+                <div class="file-name" id="docFileName" data-i18n="doc.upload_hint">upload Document.unity3d</div>
                 <div class="file-size" id="docFileSize"></div>
                 <div class="action-row">
-                    <button class="btn btn-primary" id="docExtractBtn" disabled>📂 ekstrak &amp; tampilkan</button>
+                    <button class="btn btn-primary" id="docExtractBtn" disabled data-i18n="doc.extract">📂 ekstrak &amp; tampilkan</button>
                 </div>
             </div>
 
@@ -211,32 +211,32 @@
 
             <!-- STATS DOC -->
             <div class="stats-grid">
-                <div class="stat-item"><span class="label">file</span><span class="value" id="docStatFile">-</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.file">file</span><span class="value" id="docStatFile">-</span></div>
                 <div class="stat-item"><span class="label">entries</span><span class="value" id="docStatEntries">0</span></div>
-                <div class="stat-item"><span class="label">ukuran</span><span class="value" id="docStatSize">-</span></div>
-                <div class="stat-item"><span class="label">status</span><span class="value" id="docStatStatus" style="font-size:16px; color:var(--text-secondary);">siap</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.size">ukuran</span><span class="value" id="docStatSize">-</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.status">status</span><span class="value" id="docStatStatus" style="font-size:16px; color:var(--text-secondary);" data-i18n="stat.ready">siap</span></div>
             </div>
 
             <!-- FILE LIST -->
             <div id="docFileListContainer">
                 <div class="file-list" id="docFileList">
-                    <div class="no-data" style="padding:12px;">belum ada file, ekstrak dulu</div>
+                    <div class="no-data" style="padding:12px;"><span data-i18n="doc.no_files">belum ada file, ekstrak dulu</span></div>
                 </div>
             </div>
 
             <!-- EDITOR + EXPORT/IMPORT -->
             <div style="margin:14px 0; display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
                 <div>
-                    <label style="font-size:13px; color:var(--text-secondary); margin-right:6px;">📝 edit file:</label>
+                    <label style="font-size:13px; color:var(--text-secondary); margin-right:6px;"><span data-i18n="doc.edit_label">📝 edit file:</span></label>
                     <select id="docFileSelect" style="padding:6px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-primary); font-family:inherit; font-size:13px; color:var(--text-primary); color-scheme:dark;">
-                        <option value="">— pilih file —</option>
+                        <option value="" data-i18n="doc.select_ph">— pilih file —</option>
                     </select>
-                    <button class="btn btn-sm" id="docLoadEditBtn" disabled>muat</button>
+                    <button class="btn btn-sm" id="docLoadEditBtn" disabled data-i18n="btn.load">muat</button>
                 </div>
                 <div>
-                    <button class="btn btn-sm btn-success" id="docExportBtn" disabled>⬇ export file</button>
+                    <button class="btn btn-sm btn-success" id="docExportBtn" disabled data-i18n="btn.export">⬇ export file</button>
                     <label class="mini-upload" id="docImportLabel">
-                        📥 import file
+                        <span data-i18n="btn.import">📥 import file</span>
                         <input type="file" id="docImportInput" />
                     </label>
                 </div>
@@ -244,23 +244,23 @@
 
             <div style="margin-bottom:16px;">
                 <textarea id="docEditArea" rows="6" style="width:100%; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; font-family:'SF Mono',Consolas,monospace; font-size:13px; color:var(--text-primary); resize:vertical; display:none; line-height:1.55; color-scheme:dark;"></textarea>
-                <button class="btn btn-sm" id="docApplyEditBtn" style="display:none; margin-top:8px;" disabled>terapkan perubahan</button>
+                <button class="btn btn-sm" id="docApplyEditBtn" style="display:none; margin-top:8px;" disabled data-i18n="btn.apply">terapkan perubahan</button>
             </div>
 
             <!-- UPLOAD ResCheckConf.xml & BinaryPatchMD5.xml -->
             <div style="margin:14px 0; display:flex; flex-wrap:wrap; gap:14px; align-items:center; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
-                <span style="font-size:13px; color:var(--text-secondary);">🔧 Patch XML:</span>
+                <span style="font-size:13px; color:var(--text-secondary);"><span data-i18n="doc.patch_xml">🔧 Patch XML:</span></span>
                 <label class="mini-upload" id="resCheckLabel">
                     📄 ResCheckConf.xml
                     <input type="file" id="resCheckInput" accept=".xml" />
                 </label>
-                <span id="resCheckStatus" style="font-size:12px; color:var(--text-muted);">belum diupload</span>
+                <span id="resCheckStatus" style="font-size:12px; color:var(--text-muted);" data-i18n="doc.not_uploaded">belum diupload</span>
                 <label class="mini-upload" id="binaryPatchLabel">
                     📄 BinaryPatchMD5.xml
                     <input type="file" id="binaryPatchInput" accept=".xml" />
                 </label>
-                <span id="binaryPatchStatus" style="font-size:12px; color:var(--text-muted);">belum diupload</span>
-                <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled>🔧 jalankan patch</button>
+                <span id="binaryPatchStatus" style="font-size:12px; color:var(--text-muted);" data-i18n="doc.not_uploaded">belum diupload</span>
+                <button class="btn btn-sm btn-primary" id="docPatchBtn" disabled data-i18n="doc.run_patch">🔧 jalankan patch</button>
             </div>
 
             <!-- PATCH LOG -->
@@ -268,8 +268,8 @@
 
             <!-- PACK & DOWNLOAD -->
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
-                <button class="btn btn-warning" id="docPackBtn" disabled>📦 pack ulang &amp; download</button>
-                <button class="btn" id="docResetBtn" disabled>↺ reset</button>
+                <button class="btn btn-warning" id="docPackBtn" disabled data-i18n="doc.pack">📦 pack ulang &amp; download</button>
+                <button class="btn" id="docResetBtn" disabled data-i18n="btn.reset">↺ reset</button>
             </div>
 
         </div>
@@ -280,27 +280,27 @@
         <div class="menu-panel" id="panel-go">
 
             <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
-                Nonaktifkan <strong>GameObject</strong> yang namanya sama dengan file, dan ganti string <strong>CAB</strong> (opsional). Upload 1 file <code>.unity3d</code> saja.
+                <span data-i18n-html="go.desc">Nonaktifkan <strong>GameObject</strong> yang namanya sama dengan file, dan ganti string <strong>CAB</strong> (opsional). Upload 1 file <code>.unity3d</code> saja.</span>
             </p>
 
             <div class="upload-zone" id="goDropZone">
                 <div class="upload-icon">⚡</div>
                 <input type="file" id="goFileInput" accept=".unity3d" />
                 <label for="goFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="go.pick">pilih file .unity3d</label>
-                <div class="file-name" id="goFileName">upload 1 file .unity3d ke sini</div>
+                <div class="file-name" id="goFileName" data-i18n="go.upload_hint">upload 1 file .unity3d ke sini</div>
                 <div class="file-size" id="goFileSize"></div>
             </div>
 
             <div style="margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
                 <label style="font-size:13px; color:var(--text-secondary); display:block; margin-bottom:8px;">
-                    🔧 CAB Baru (opsional — support karakter spesial, contoh: <code>CAB-©ByLisa</code>)
+                    <span data-i18n-html="go.cab_label">🔧 CAB Baru (opsional — support karakter spesial, contoh: <code>CAB-©ByLisa</code>)</span>
                 </label>
-                <input type="text" id="goCabInput" placeholder="Kosongkan jika tidak ingin ubah CAB" style="width:100%; max-width:480px; padding:9px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-primary); font-family:'SF Mono',Consolas,monospace; font-size:13px; color:var(--text-primary); color-scheme:dark;" />
-                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">Akan dipad ke 36-byte (UTF-8 + null padding). Jika tidak diawali CAB-, otomatis ditambahkan.</div>
+                <input type="text" id="goCabInput" data-i18n-placeholder="go.cab_ph" placeholder="Kosongkan jika tidak ingin ubah CAB" style="width:100%; max-width:480px; padding:9px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-primary); font-family:'SF Mono',Consolas,monospace; font-size:13px; color:var(--text-primary); color-scheme:dark;" />
+                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;"><span data-i18n="go.cab_hint">Akan dipad ke 36-byte (UTF-8 + null padding). Jika tidak diawali CAB-, otomatis ditambahkan.</span></div>
             </div>
 
             <div class="action-row" style="margin-bottom:16px;">
-                <button class="btn btn-primary" id="goProcessBtn" disabled>⚡ process override</button>
+                <button class="btn btn-primary" id="goProcessBtn" disabled data-i18n="go.process">⚡ process override</button>
             </div>
 
             <div class="progress-wrap" id="goProgressWrap">
@@ -309,17 +309,17 @@
             </div>
 
             <div class="stats-grid">
-                <div class="stat-item"><span class="label">file</span><span class="value" id="goStatFile">-</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.file">file</span><span class="value" id="goStatFile">-</span></div>
                 <div class="stat-item"><span class="label">GameObject</span><span class="value" id="goStatGO">-</span></div>
-                <div class="stat-item"><span class="label">CAB diganti</span><span class="value" id="goStatCAB">0</span></div>
-                <div class="stat-item"><span class="label">status</span><span class="value" id="goStatStatus" style="font-size:16px; color:var(--text-secondary);">siap</span></div>
+                <div class="stat-item"><span class="label" data-i18n="go.cab_replaced">CAB diganti</span><span class="value" id="goStatCAB">0</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.status">status</span><span class="value" id="goStatStatus" style="font-size:16px; color:var(--text-secondary);" data-i18n="stat.ready">siap</span></div>
             </div>
 
             <div id="goLog" style="margin:14px 0; padding:12px 14px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border-color); font-family:'SF Mono',Consolas,monospace; font-size:12px; color:var(--text-primary); white-space:pre-wrap; min-height:48px; display:none;"></div>
 
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
-                <button class="btn btn-warning" id="goDownloadBtn" disabled>⬇ download hasil</button>
-                <button class="btn" id="goResetBtn" disabled>↺ reset</button>
+                <button class="btn btn-warning" id="goDownloadBtn" disabled data-i18n="go.download">⬇ download hasil</button>
+                <button class="btn" id="goResetBtn" disabled data-i18n="btn.reset">↺ reset</button>
             </div>
 
         </div>
@@ -431,45 +431,45 @@
         <div class="tutorial-modal">
             <div class="tutorial-header">
                 <div class="tutorial-icon">📖</div>
-                <h2>Tutorial Pemakaian</h2>
-                <p>Panduan singkat DocumentExtractor</p>
+                <h2 data-i18n="tutorial.title">Tutorial Pemakaian</h2>
+                <p data-i18n="tutorial.sub">Panduan singkat DocumentExtractor</p>
             </div>
             <div class="tutorial-steps">
                 <div class="tutorial-step">
                     <div class="step-number">1</div>
                     <div class="step-content">
-                        <strong>Upload file</strong>
-                        <span>Upload <b>Document.unity3d</b> (zona atas) lalu upload <b>ResCheckConf.xml</b> &amp; <b>BinaryPatchMD5.xml</b> (bagian bawah).</span>
+                        <strong data-i18n="tutorial.s1t">Upload file</strong>
+                        <span><span data-i18n-html="tutorial.s1">Upload <b>Document.unity3d</b> (zona atas) lalu upload <b>ResCheckConf.xml</b> &amp; <b>BinaryPatchMD5.xml</b> (bagian bawah).</span></span>
                     </div>
                 </div>
                 <div class="tutorial-step">
                     <div class="step-number">2</div>
                     <div class="step-content">
-                        <strong>Ekstrak</strong>
-                        <span>Klik tombol <b>📂 ekstrak &amp; tampilkan</b> untuk membuka isi file.</span>
+                        <strong data-i18n="tutorial.s2t">Ekstrak</strong>
+                        <span><span data-i18n-html="tutorial.s2">Klik tombol <b>📂 ekstrak &amp; tampilkan</b> untuk membuka isi file.</span></span>
                     </div>
                 </div>
                 <div class="tutorial-step">
                     <div class="step-number">3</div>
                     <div class="step-content">
-                        <strong>Edit sesuka hati</strong>
-                        <span>Pilih file, muat, ubah isinya, atau export/import sesuai kebutuhan.</span>
+                        <strong data-i18n="tutorial.s3t">Edit sesuka hati</strong>
+                        <span><span data-i18n="tutorial.s3">Pilih file, muat, ubah isinya, atau export/import sesuai kebutuhan.</span></span>
                     </div>
                 </div>
                 <div class="tutorial-step">
                     <div class="step-number">4</div>
                     <div class="step-content">
-                        <strong>Pack ulang &amp; download</strong>
-                        <span>Setelah selesai editing, klik tombol <b>📦 pack ulang &amp; download</b>.</span>
+                        <strong data-i18n="tutorial.s4t">Pack ulang &amp; download</strong>
+                        <span><span data-i18n-html="tutorial.s4">Setelah selesai editing, klik tombol <b>📦 pack ulang &amp; download</b>.</span></span>
                     </div>
                 </div>
             </div>
             <div class="tutorial-footer">
                 <label class="tutorial-dont-show">
                     <input type="checkbox" id="tutorialDontShow" />
-                    <span>Jangan tampilkan lagi</span>
+                    <span data-i18n="tutorial.dont">Jangan tampilkan lagi</span>
                 </label>
-                <button class="btn btn-primary" id="tutorialCloseBtn">Mengerti ✓</button>
+                <button class="btn btn-primary" id="tutorialCloseBtn" data-i18n="tutorial.close">Mengerti ✓</button>
             </div>
         </div>
     </div>
@@ -477,26 +477,26 @@
     <!-- Floating Music Player -->
     <div id="musicFloat" class="music-float" style="display:none;" aria-hidden="true">
         <div id="musicTrackMenu" class="music-track-menu" hidden>
-            <div class="music-track-menu-title">Pilih Lagu</div>
+            <div class="music-track-menu-title" data-i18n="music.pick">Pilih Lagu</div>
             <button type="button" class="music-track-opt" data-track="1" id="musicTrack1">
                 <span class="music-track-icon">🎵</span>
-                <span class="music-track-label">Lagu 1</span>
+                <span class="music-track-label" data-i18n="music.track1">Lagu 1</span>
                 <span class="music-track-check" hidden>✓</span>
             </button>
             <button type="button" class="music-track-opt" data-track="2" id="musicTrack2">
                 <span class="music-track-icon">🎶</span>
-                <span class="music-track-label">Lagu 2</span>
+                <span class="music-track-label" data-i18n="music.track2">Lagu 2</span>
                 <span class="music-track-check" hidden>✓</span>
             </button>
-            <p class="music-track-hint">Tahan tombol musik untuk buka menu</p>
+            <p class="music-track-hint" data-i18n="music.hint">Tahan tombol musik untuk buka menu</p>
         </div>
-        <button type="button" class="music-fab" id="musicToggleBtn" title="Ketuk: play/pause · Tahan: pilih lagu" aria-label="Musik">
+        <button type="button" class="music-fab" id="musicToggleBtn" data-i18n-title="music.fab_title" title="Ketuk: play/pause · Tahan: pilih lagu" aria-label="Musik">
             <span class="music-fab-icon" id="musicFabIcon">🔇</span>
         </button>
     </div>
 
-    <script src="i18n.js?v=202608201400"></script>
-    <script src="credentials.js?v=202608201400"></script>
-    <script src="app.js?v=202608201400" defer></script>
+    <script src="i18n.js?v=202608201530"></script>
+    <script src="credentials.js?v=202608201530"></script>
+    <script src="app.js?v=202608201530" defer></script>
 </body>
 </html>

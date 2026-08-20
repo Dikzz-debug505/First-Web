@@ -24,9 +24,9 @@
     };
 
     window.validateLocalFile = function (file, extensions) {
-        if (!file) throw new Error('file tidak dipilih');
+        if (!file) throw new Error(t('js.file_not_chosen'));
         if (file.size > SECURITY.MAX_BYTES_FILE) {
-            throw new Error('file terlalu besar (maks. 512 MB)');
+            throw new Error(t('js.file_too_big'));
         }
         const name = String(file.name || '');
         const lower = name.toLowerCase();
@@ -289,11 +289,11 @@
                     }
                     if (bgmIsPlaying) {
                         bgmStop();
-                        if (typeof showToast === 'function') showToast('🔇 Musik dimatikan', 'info');
+                        if (typeof showToast === 'function') showToast(t('js.music_off'), 'info');
                     } else {
                         localStorage.setItem(MUSIC_PREF_KEY, '1');
                         bgmPlay();
-                        if (typeof showToast === 'function') showToast('🔊 ' + (BGM_TRACKS[bgmCurrentTrack] || {}).name + ' diputar', 'success');
+                        if (typeof showToast === 'function') showToast(t('js.song_play', { name: (BGM_TRACKS[bgmCurrentTrack] || {}).name || '' }), 'success');
                     }
                 }
 
@@ -351,12 +351,12 @@
                                     }).catch(function () {
                                         bgmIsPlaying = false;
                                         bgmUpdateBtn();
-                                        if (typeof showToast === 'function') showToast('Gagal memutar lagu', 'error');
+                                        if (typeof showToast === 'function') showToast(t('js.song_fail'), 'error');
                                     });
                                 } else {
                                     bgmIsPlaying = false;
                                     bgmUpdateBtn();
-                                    if (typeof showToast === 'function') showToast('Gagal memutar lagu', 'error');
+                                    if (typeof showToast === 'function') showToast(t('js.song_fail'), 'error');
                                 }
                             });
                         }
@@ -399,6 +399,20 @@
             // + Admin Panel + Device Limit per user
             // ============================================================
             const LOGIN_SESSION_KEY = 'mlbb_auth_session_v2';
+            function t(key, vars) {
+                try {
+                    if (window.MLBB_i18n && typeof MLBB_i18n.t === 'function') return MLBB_i18n.t(key, vars);
+                } catch (e) {}
+                return key;
+            }
+            /** Translate known Indonesian UI literals when English is active */
+            function tr(idText, enText) {
+                try {
+                    if (window.MLBB_i18n && MLBB_i18n.getLang() === 'en') return enText;
+                } catch (e) {}
+                return idText;
+            }
+
             const LOGIN_FAIL_KEY = 'mlbb_login_fail_v1';
             const MANAGED_USERS_KEY = 'mlbb_managed_users_v1';
             const DELETED_USERS_KEY = 'mlbb_deleted_users_v1'; // blocklist username (case-insensitive)
@@ -1590,11 +1604,11 @@
                     const isEdit = editKey && editKey !== '-1';
 
                     if (!uname || uname.length < 1 || uname.length > 64) {
-                        showAdminFormError('Username wajib diisi (1–64 karakter).');
+                        showAdminFormError(t('js.user_required'));
                         return;
                     }
                     if (!isEdit && (!pass || pass.length < 1 || pass.length > 128)) {
-                        showAdminFormError('Password wajib diisi (1–128 karakter).');
+                        showAdminFormError(t('js.pass_required'));
                         return;
                     }
                     if (pass && pass.length > 128) {
@@ -1620,7 +1634,7 @@
                             return;
                         }
                         if (!data.ok) {
-                            showAdminFormError(data.message || 'Gagal menyimpan user.');
+                            showAdminFormError(data.message || t('js.save_fail'));
                             return;
                         }
                         showToast(
@@ -1633,7 +1647,7 @@
                         renderAdminUserTable();
                     }).catch(function () {
                         if (adminSaveBtn) adminSaveBtn.disabled = false;
-                        showAdminFormError('Gagal menghubungi server. Coba lagi.');
+                        showAdminFormError(t('js.server_fail'));
                     });
                 });
             }
@@ -1649,7 +1663,7 @@
                     if (action === 'edit') {
                         fillAdminFormForEdit(uname);
                     } else if (action === 'reset-device') {
-                        if (!confirm('Reset semua device untuk user "' + uname + '"?\nSetelah reset, user bisa login lagi dari device baru (sampai batas max).')) return;
+                        if (!confirm(t('js.confirm_reset_dev', { name: uname }))) return;
                         btn.disabled = true;
                         adminApi('/api/admin/reset-device', {
                             method: 'POST',
@@ -1675,12 +1689,7 @@
                             showToast('Gagal menghubungi server', 'error');
                         });
                     } else if (action === 'delete') {
-                        if (!confirm(
-                            'Hapus akun ini dari Supabase?\n\n' +
-                            'Username: ' + uname + '\n\n' +
-                            'Akun akan dinonaktifkan dan device registry dihapus.\n' +
-                            'User tidak bisa login lagi.'
-                        )) return;
+                        if (!confirm(t('js.confirm_delete', { name: uname }))) return;
                         btn.disabled = true;
                         adminApi('/api/admin/delete-user', {
                             method: 'POST',
@@ -1728,12 +1737,7 @@
                         showToast('Tidak ada akun non-admin untuk dihapus', 'warning');
                         return;
                     }
-                    if (!confirm(
-                        'Hapus SEMUA akun non-admin dari Supabase?\n\n' +
-                        'Jumlah: ' + all.length + ' akun\n' +
-                        'Akun akan dinonaktifkan + device di-reset.\n\n' +
-                        'Tindakan ini tidak bisa dibatalkan dari panel.'
-                    )) return;
+                    if (!confirm(t('js.confirm_delete_all', { n: all.length }))) return;
 
                     adminDeleteAllManagedBtn.disabled = true;
                     let done = 0;
@@ -1762,6 +1766,20 @@
                     next(0);
                 });
             }
+
+
+            // Re-apply translations when language changes
+            window.addEventListener('mlbb:lang', function () {
+                try {
+                    if (window.MLBB_i18n) {
+                        MLBB_i18n.applyI18n();
+                        MLBB_i18n.initLangSwitchers();
+                    }
+                    if (typeof renderAdminUserTable === 'function' && currentIsAdmin) {
+                        renderAdminUserTable();
+                    }
+                } catch (e) {}
+            });
 
             // ============================================================
             // TUTORIAL POPUP (setelah login)
@@ -1856,7 +1874,7 @@
             function heroHandleFile(file) {
                 try { validateLocalFile(file, ['.bytes']); } catch (e) { heroShowToast('❌ ' + e.message, 'error'); return; }
                 if (!file || !file.name.toLowerCase().endsWith('.bytes')) {
-                    heroShowToast('file harus .bytes', 'error');
+                    heroShowToast(t('js.file_must_bytes'), 'error');
                     return;
                 }
                 const reader = new FileReader();
@@ -1879,7 +1897,7 @@
                         heroDownloadBtn.disabled = true;
                         heroResetBtn.disabled = true;
                         if (heroPickerWrap) heroPickerWrap.style.display = 'none';
-                        if (heroSelect) heroSelect.innerHTML = '<option value="">— pilih hero —</option>';
+                        if (heroSelect) heroSelect.innerHTML = '<option value="">' + t('js.choose_hero') + '</option>';
                         if (heroSearch) heroSearch.value = '';
                         if (heroPickerMeta) heroPickerMeta.textContent = '';
                         heroScanBtn.disabled = false;
@@ -1914,7 +1932,7 @@
                 heroDownloadBtn.disabled = true;
                 heroResetBtn.disabled = true;
                 if (heroPickerWrap) heroPickerWrap.style.display = 'none';
-                if (heroSelect) heroSelect.innerHTML = '<option value="">— pilih hero —</option>';
+                if (heroSelect) heroSelect.innerHTML = '<option value="">' + t('js.choose_hero') + '</option>';
                 if (heroSearch) heroSearch.value = '';
                 if (heroPickerMeta) heroPickerMeta.textContent = '';
                 heroSelectedIdx = -1;
@@ -2045,7 +2063,7 @@
                 if (!heroSelect) return;
                 const q = (filterText || '').trim().toLowerCase();
                 const prev = heroSelect.value;
-                let html = '<option value="">— pilih hero —</option>';
+                let html = '<option value="">' + t('js.choose_hero') + '</option>';
                 let shown = 0;
                 for (let i = 0; i < heroes.length; i++) {
                     const n = heroes[i].name || '';
@@ -2232,7 +2250,7 @@
                 heroDownloadBtn.disabled = true;
                 heroResetBtn.disabled = true;
                 if (heroPickerWrap) heroPickerWrap.style.display = 'none';
-                if (heroSelect) heroSelect.innerHTML = '<option value="">— pilih hero —</option>';
+                if (heroSelect) heroSelect.innerHTML = '<option value="">' + t('js.choose_hero') + '</option>';
                 if (heroSearch) heroSearch.value = '';
                 if (heroPickerMeta) heroPickerMeta.textContent = '';
                 heroShowToast('↺ reset berhasil, scan ulang', 'warning');
@@ -2258,7 +2276,7 @@
                 }
             });
 
-            heroStatStatus.textContent = 'tunggu upload';
+            heroStatStatus.textContent = t('js.wait_upload');
             heroStatStatus.style.color = '#8290a0';
             heroShowToast('📂 upload Hero.bytes untuk memulai', 'info');
 
@@ -2309,7 +2327,7 @@
                     docPatchBtn.title = 'Patch siap dijalankan';
                 } else {
                     const missing = [];
-                    if (!docExtracted) missing.push('Document belum diekstrak');
+                    if (!docExtracted) missing.push(t('js.not_extracted'));
                     if (!docResCheckXML) missing.push('ResCheckConf.xml');
                     if (!docBinaryPatchXML) missing.push('BinaryPatchMD5.xml');
                     docPatchBtn.title = 'Butuh: ' + missing.join(', ');
@@ -2319,7 +2337,7 @@
             function docHandleFile(file) {
                 try { validateLocalFile(file, ['.unity3d']); } catch (e) { docShowToast('❌ ' + e.message, 'error'); return; }
                 if (!file || !file.name.toLowerCase().endsWith('.unity3d')) {
-                    docShowToast('file harus .unity3d', 'error');
+                    docShowToast(t('js.file_must_unity3d'), 'error');
                     return;
                 }
                 const reader = new FileReader();
@@ -2337,7 +2355,7 @@
                         docModified = {};
                         docExtracted = false;
                         docFileList.innerHTML = '<div class="no-data" style="padding:12px;">belum ada file, ekstrak dulu</div>';
-                        docFileSelect.innerHTML = '<option value="">— pilih file —</option>';
+                        docFileSelect.innerHTML = '<option value="">' + t('js.choose_file') + '</option>';
                         docEditArea.style.display = 'none';
                         docApplyEditBtn.style.display = 'none';
                         docExportBtn.disabled = true;
@@ -2371,7 +2389,7 @@
             resCheckInput.addEventListener('change', function(e) {
                 const file = this.files[0];
                 if (!file) {
-                    resCheckStatus.textContent = 'belum diupload';
+                    resCheckStatus.textContent = t('js.not_uploaded');
                     resCheckStatus.style.color = '#8290a0';
                     docResCheckXML = null;
                     updatePatchButton();
@@ -2408,7 +2426,7 @@
             binaryPatchInput.addEventListener('change', function(e) {
                 const file = this.files[0];
                 if (!file) {
-                    binaryPatchStatus.textContent = 'belum diupload';
+                    binaryPatchStatus.textContent = t('js.not_uploaded');
                     binaryPatchStatus.style.color = '#8290a0';
                     docBinaryPatchXML = null;
                     updatePatchButton();
@@ -2453,7 +2471,7 @@
                 setTimeout(() => {
                     try {
                         const data = docRaw;
-                        if (data.length < 8) { throw new Error('file terlalu kecil'); }
+                        if (data.length < 8) { throw new Error(t('js.file_too_small')); }
                         const magic = String.fromCharCode(data[0], data[1], data[2], data[3]);
                         if (magic !== 'MLBB') { throw new Error('bukan MLBB bundle'); }
                         const count = data[4] | (data[5] << 8) | (data[6] << 16) | (data[7] << 24);
@@ -2533,7 +2551,7 @@
             }
 
             function docPopulateSelect() {
-                let opts = '<option value="">— pilih file —</option>';
+                let opts = '<option value="">' + t('js.choose_file') + '</option>';
                 docEntries.forEach((e, idx) => {
                     opts += `<option value="${idx}">${e.name}</option>`;
                 });
@@ -2917,7 +2935,7 @@
                 docExtracted = false;
                 docEntries = [];
                 docFileList.innerHTML = '<div class="no-data" style="padding:12px;">belum ada file, ekstrak dulu</div>';
-                docFileSelect.innerHTML = '<option value="">— pilih file —</option>';
+                docFileSelect.innerHTML = '<option value="">' + t('js.choose_file') + '</option>';
                 docEditArea.style.display = 'none';
                 docApplyEditBtn.style.display = 'none';
                 docPatchLog.classList.remove('active');
@@ -2931,11 +2949,11 @@
                 docResetBtn.disabled = true;
                 docExportBtn.disabled = true;
                 updatePatchButton();
-                docShowToast('↺ reset berhasil', 'warning');
+                docShowToast(t('js.reset_ok'), 'warning');
             });
 
             // INIT
-            docStatStatus.textContent = 'tunggu upload';
+            docStatStatus.textContent = t('js.wait_upload');
             docStatStatus.style.color = '#8290a0';
             docShowToast('📦 upload Document.unity3d untuk memulai', 'info');
 
@@ -3414,7 +3432,7 @@
             function goHandleFile(file) {
                 try { validateLocalFile(file, ['.unity3d']); } catch (e) { goShowToast('❌ ' + e.message, 'error'); return; }
                 if (!file || !file.name.toLowerCase().endsWith('.unity3d')) {
-                    goShowToast('file harus .unity3d', 'error');
+                    goShowToast(t('js.file_must_unity3d'), 'error');
                     return;
                 }
                 const reader = new FileReader();
@@ -3648,7 +3666,7 @@
                 goResultBytes = null;
                 goFileBaseName = '';
                 goOriginalName = '';
-                goFileName.textContent = 'upload 1 file .unity3d ke sini';
+                goFileName.textContent = t('go.upload_hint');
                 goFileName.classList.remove('has-file');
                 goFileSize.textContent = '';
                 goCabInput.value = '';
@@ -3656,7 +3674,7 @@
                 goStatFile.textContent = '-';
                 goStatGO.textContent = '-';
                 goStatCAB.textContent = '0';
-                goStatStatus.textContent = 'siap';
+                goStatStatus.textContent = t('js.ready');
                 goStatStatus.style.color = '#8290a0';
                 goProcessBtn.disabled = true;
                 goDownloadBtn.disabled = true;
@@ -3664,10 +3682,10 @@
                 goLog.style.display = 'none';
                 goLog.textContent = '';
                 goProgressWrap.classList.remove('active');
-                goShowToast('↺ reset berhasil', 'warning');
+                goShowToast(t('js.reset_ok'), 'warning');
             });
 
-            goStatStatus.textContent = 'tunggu upload';
+            goStatStatus.textContent = t('js.wait_upload');
             goStatStatus.style.color = '#8290a0';
 
         })();

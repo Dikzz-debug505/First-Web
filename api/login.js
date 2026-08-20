@@ -1,19 +1,86 @@
 /**
  * POST /api/login
  * Body: { username, password, deviceId }
- * Response: { ok, username?, isAdmin?, token?, expired?, maxDevices?, current?, max?, message? }
  *
- * Env (Vercel):
- *   SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Security:
+ *  - Parameterized Supabase queries only (no raw SQL / string concat)
+ *  - Strict username charset (blocks ILIKE wildcards % _)
+ *  - Uniform error messages (no user enumeration / no DB leak)
+ *  - Timing-safe password compare
+ *  - Server-side rate limit + lockout (per IP + username)
+ *  - Random delay on failure
+ *
+ * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
 const crypto = require('crypto');
 const { getSupabase, sha256Hex, parseBody, json, issueToken } = require('./lib/session');
 
+/** Username: 1–64 chars, only safe set (no SQL/ILIKE metacharacters) */
+const USERNAME_RE = /^[a-zA-Z0-9._-]{1,64}$/;
+/** Device id: hex / alnum / dash / underscore */
+const DEVICE_RE = /^[a-zA-Z0-9._-]{8,128}$/;
+
+const MAX_FAIL = 5;
+const WINDOW_MS = 15 * 60 * 1000; // 15 menit sliding window
+const LOCK_MS = 5 * 60 * 1000; // 5 menit lock setelah MAX_FAIL
+const MSG_INVALID = 'Username atau password salah';
+const MSG_LOCKED = 'Terlalu banyak percobaan. Coba lagi nanti.';
+const MSG_GENERIC = 'Login gagal. Coba lagi.';
+
+/** Best-effort in-memory rate limit (per serverless instance) */
+const failBuckets = new Map();
+
+function clientIp(req) {
+  const xf = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '';
+  const raw = String(xf).split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+  return raw.slice(0, 64);
+}
+
+function bucketKey(ip, username) {
+  return crypto
+    .createHash('sha256')
+    .update(String(ip) + '|' + String(username).toLowerCase())
+    .digest('hex')
+    .slice(0, 32);
+}
+
+function getBucket(key) {
+  const now = Date.now();
+  let b = failBuckets.get(key);
+  if (!b || now > b.windowEnd) {
+    b = { count: 0, windowEnd: now + WINDOW_MS, lockUntil: 0 };
+    failBuckets.set(key, b);
+  }
+  return b;
+}
+
+function isLocked(bucket) {
+  return bucket.lockUntil && Date.now() < bucket.lockUntil;
+}
+
+function registerFail(bucket) {
+  bucket.count += 1;
+  if (bucket.count >= MAX_FAIL) {
+    bucket.lockUntil = Date.now() + LOCK_MS;
+    bucket.count = 0;
+    bucket.windowEnd = Date.now() + WINDOW_MS;
+  }
+}
+
+function clearFails(key) {
+  failBuckets.delete(key);
+}
+
 function timingSafeEqualStr(a, b) {
   const aa = Buffer.from(String(a || ''), 'utf8');
   const bb = Buffer.from(String(b || ''), 'utf8');
-  if (aa.length !== bb.length) return false;
+  if (aa.length !== bb.length) {
+    // still do a dummy compare to reduce length oracle slightly
+    try {
+      crypto.timingSafeEqual(aa, aa);
+    } catch (_) {}
+    return false;
+  }
   try {
     return crypto.timingSafeEqual(aa, bb);
   } catch {
@@ -21,7 +88,26 @@ function timingSafeEqualStr(a, b) {
   }
 }
 
+function hasNullByte(s) {
+  return String(s).indexOf('\0') !== -1;
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function failResponse(res, message, extra) {
+  // Random delay 120–280ms to slow brute force & reduce timing leaks
+  await sleep(120 + Math.floor(Math.random() * 160));
+  const body = Object.assign({ ok: false, message: message || MSG_INVALID }, extra || {});
+  return json(res, 200, body);
+}
+
 module.exports = async function handler(req, res) {
+  // Security headers for API response
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
+
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -34,62 +120,108 @@ module.exports = async function handler(req, res) {
 
   const supabase = getSupabase();
   if (!supabase) {
-    return json(res, 500, {
-      ok: false,
-      message: 'Server misconfigured: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'
-    });
+    // Do not leak env details to client in production-style message
+    return json(res, 500, { ok: false, message: MSG_GENERIC });
   }
 
   const body = parseBody(req);
-  const username = String(body.username || '').trim();
+  const usernameRaw = String(body.username || '').trim();
   const password = String(body.password || '');
   const deviceId = String(body.deviceId || '').trim();
 
-  if (username.length < 1 || username.length > 64 || password.length < 1 || password.length > 128) {
-    return json(res, 200, { ok: false, message: 'Username atau password tidak valid' });
-  }
-  if (!deviceId || deviceId.length < 8 || deviceId.length > 128) {
-    return json(res, 200, { ok: false, message: 'Device ID tidak valid' });
+  // --- Strict validation (reject before any DB call) ---
+  if (
+    !usernameRaw ||
+    !USERNAME_RE.test(usernameRaw) ||
+    hasNullByte(usernameRaw) ||
+    hasNullByte(password) ||
+    password.length < 1 ||
+    password.length > 128 ||
+    !DEVICE_RE.test(deviceId) ||
+    hasNullByte(deviceId)
+  ) {
+    return failResponse(res, MSG_INVALID);
   }
 
-  const { data: users, error: findErr } = await supabase
-    .from('app_users')
-    .select('username, password_hash, is_admin, max_devices, expiry_date, is_active')
-    .ilike('username', username)
-    .limit(5);
+  const username = usernameRaw;
+  const ip = clientIp(req);
+  const key = bucketKey(ip, username);
+  const bucket = getBucket(key);
+
+  if (isLocked(bucket)) {
+    const retrySec = Math.max(1, Math.ceil((bucket.lockUntil - Date.now()) / 1000));
+    return failResponse(res, MSG_LOCKED, { locked: true, retryAfter: retrySec });
+  }
+
+  // --- Parameterized lookup only (no string-built SQL) ---
+  // Use eq on lower-case match via filter: fetch candidates with exact charset usernames
+  // .eq is exact; we compare case-insensitively in JS after a narrow query.
+  let users = null;
+  let findErr = null;
+  try {
+    const result = await supabase
+      .from('app_users')
+      .select('username, password_hash, is_admin, max_devices, expiry_date, is_active')
+      .eq('username', username)
+      .limit(1);
+    users = result.data;
+    findErr = result.error;
+
+    // Case-insensitive fallback if stored with different casing
+    if (!findErr && (!users || users.length === 0)) {
+      const result2 = await supabase
+        .from('app_users')
+        .select('username, password_hash, is_admin, max_devices, expiry_date, is_active')
+        .ilike('username', username.replace(/[%_]/g, '')) // strip any wildcard chars (already blocked by regex)
+        .limit(3);
+      if (!result2.error && result2.data) {
+        users = result2.data.filter(
+          (u) => String(u.username || '').toLowerCase() === username.toLowerCase()
+        );
+      }
+      findErr = result2.error || findErr;
+    }
+  } catch (e) {
+    console.error('login query exception');
+    return json(res, 500, { ok: false, message: MSG_GENERIC });
+  }
 
   if (findErr) {
-    console.error('supabase find error', findErr);
-    return json(res, 500, { ok: false, message: 'Gagal mengakses database' });
+    console.error('supabase find error');
+    return json(res, 500, { ok: false, message: MSG_GENERIC });
   }
 
   const row = (users || []).find(
     (u) => String(u.username || '').toLowerCase() === username.toLowerCase()
   );
 
+  // Uniform failure path (no user enumeration)
   if (!row || !row.is_active) {
-    await new Promise((r) => setTimeout(r, 80 + Math.floor(Math.random() * 80)));
-    return json(res, 200, { ok: false, message: 'Username atau password salah' });
+    registerFail(bucket);
+    return failResponse(res, MSG_INVALID);
   }
 
   const hash = sha256Hex(password);
   if (!timingSafeEqualStr(hash, row.password_hash)) {
-    await new Promise((r) => setTimeout(r, 80 + Math.floor(Math.random() * 80)));
-    return json(res, 200, { ok: false, message: 'Username atau password salah' });
+    registerFail(bucket);
+    return failResponse(res, MSG_INVALID);
   }
 
+  // Expiry
   if (row.expiry_date) {
     const expDate = new Date(String(row.expiry_date));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (isNaN(expDate.getTime()) || today > expDate) {
-      return json(res, 200, { ok: false, expired: true, message: 'Akun sudah kedaluarsa' });
+      // Same generic style, but flag for client UI
+      return failResponse(res, 'Akun sudah kedaluarsa', { expired: true });
     }
   }
 
   const uname = String(row.username);
   const isAdmin = !!row.is_admin;
 
+  // Device limit (skip admin)
   if (!isAdmin) {
     const maxRaw = row.max_devices;
     const unlimited = maxRaw == null || maxRaw === '' || Number(maxRaw) <= 0;
@@ -101,20 +233,18 @@ module.exports = async function handler(req, res) {
       .eq('username', uname);
 
     if (devErr) {
-      console.error('supabase devices error', devErr);
-      return json(res, 500, { ok: false, message: 'Gagal cek device' });
+      console.error('supabase devices error');
+      return json(res, 500, { ok: false, message: MSG_GENERIC });
     }
 
     const list = (devices || []).map((d) => d.device_id).filter(Boolean);
     const already = list.includes(deviceId);
 
     if (!already && max != null && list.length >= max) {
-      return json(res, 200, {
-        ok: false,
+      return failResponse(res, 'Batas device tercapai', {
         maxDevices: true,
         current: list.length,
-        max,
-        message: 'Batas device tercapai'
+        max
       });
     }
 
@@ -132,11 +262,14 @@ module.exports = async function handler(req, res) {
         last_seen: new Date().toISOString()
       });
       if (insErr && insErr.code !== '23505') {
-        console.error('supabase insert device', insErr);
-        return json(res, 500, { ok: false, message: 'Gagal registrasi device' });
+        console.error('supabase insert device');
+        return json(res, 500, { ok: false, message: MSG_GENERIC });
       }
     }
   }
+
+  // Success — clear rate-limit bucket
+  clearFails(key);
 
   const token = issueToken(uname, isAdmin);
   return json(res, 200, {

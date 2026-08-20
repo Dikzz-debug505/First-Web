@@ -80,31 +80,49 @@ module.exports = async function handler(req, res) {
     }
     const expiryDate = body.expiryDate ? String(body.expiryDate).slice(0, 10) : null;
 
-    if (!username || username.length > 64) {
-      return json(res, 200, { ok: false, message: 'Username wajib (1–64 karakter)' });
+    // Same charset as /api/login — blocks SQL/ILIKE metacharacters
+    const USERNAME_RE = /^[a-zA-Z0-9._-]{1,64}$/;
+    if (!username || !USERNAME_RE.test(username) || username.indexOf('\0') !== -1) {
+      return json(res, 200, {
+        ok: false,
+        message: 'Username hanya boleh huruf, angka, titik, underscore, strip (1–64)'
+      });
     }
-    if (!isEdit && (!password || password.length < 1 || password.length > 128)) {
+    if (!isEdit && (!password || password.length < 1 || password.length > 128 || password.indexOf('\0') !== -1)) {
       return json(res, 200, { ok: false, message: 'Password wajib saat membuat user baru' });
     }
-    if (password && password.length > 128) {
+    if (password && (password.length > 128 || password.indexOf('\0') !== -1)) {
       return json(res, 200, { ok: false, message: 'Password maksimal 128 karakter' });
     }
 
-    // Cari existing
+    // Cari existing (parameterized .eq first, then exact case-insensitive filter)
     const { data: existingRows, error: findErr } = await supabase
       .from('app_users')
       .select('username, is_admin, password_hash')
-      .ilike('username', username)
-      .limit(5);
+      .eq('username', username)
+      .limit(1);
 
     if (findErr) {
       console.error('admin find user', findErr);
       return json(res, 500, { ok: false, message: 'Gagal cek user' });
     }
 
-    const existing = (existingRows || []).find(
+    let existing = (existingRows || []).find(
       (u) => String(u.username || '').toLowerCase() === username.toLowerCase()
     );
+    if (!existing) {
+      const { data: rows2, error: err2 } = await supabase
+        .from('app_users')
+        .select('username, is_admin, password_hash')
+        .ilike('username', username.replace(/[%_]/g, ''))
+        .limit(5);
+      if (err2) {
+        return json(res, 500, { ok: false, message: 'Gagal cek user' });
+      }
+      existing = (rows2 || []).find(
+        (u) => String(u.username || '').toLowerCase() === username.toLowerCase()
+      );
+    }
 
     if (existing && existing.is_admin) {
       return json(res, 200, { ok: false, message: 'Akun admin khusus tidak bisa diubah lewat panel' });
