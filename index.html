@@ -8,7 +8,7 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
-    <link rel="stylesheet" href="style.css?v=202608201100">
+    <link rel="stylesheet" href="style.css?v=202608201400">
 </head>
 <body>
 
@@ -18,28 +18,30 @@
             <div class="login-brand">
                 <div class="login-icon">🔐</div>
                 <h1>MLBB Unity Tools</h1>
-                <p>Masuk untuk mengakses tools</p>
+                <p data-i18n="login.subtitle">Masuk untuk mengakses tools</p>
+            </div>
+            <div class="lang-switch" id="loginLangSwitch">
+                <button type="button" class="lang-btn" data-lang-btn="id" title="Indonesia">ID</button>
+                <button type="button" class="lang-btn" data-lang-btn="en" title="English">EN</button>
             </div>
             <form id="loginForm" autocomplete="off">
                 <div class="login-field">
-                    <label for="loginUser">Username</label>
-                    <input type="text" id="loginUser" name="username" placeholder="Masukkan username" required autocomplete="username" maxlength="64" autocapitalize="off" spellcheck="false" />
+                    <label for="loginUser" data-i18n="login.username">Username</label>
+                    <input type="text" id="loginUser" name="username" data-i18n-placeholder="login.user.placeholder" placeholder="Masukkan username" required autocomplete="username" maxlength="64" autocapitalize="off" spellcheck="false" />
                 </div>
                 <div class="login-field">
-                    <label for="loginPass">Password</label>
-                    <input type="password" id="loginPass" name="password" placeholder="Masukkan password" required autocomplete="current-password" maxlength="128" />
+                    <label for="loginPass" data-i18n="login.password">Password</label>
+                    <input type="password" id="loginPass" name="password" data-i18n-placeholder="login.pass.placeholder" placeholder="Masukkan password" required autocomplete="current-password" maxlength="128" />
                 </div>
                 <div class="login-error" id="loginError" style="display:none;"></div>
-                <button type="submit" class="btn btn-primary login-btn" id="loginSubmitBtn">Masuk</button>
+                <button type="submit" class="btn btn-primary login-btn" id="loginSubmitBtn" data-i18n="login.submit">Masuk</button>
                 <div class="login-spinner" id="loginSpinner" aria-live="polite" aria-busy="false">
                     <div class="spinner" id="loginSpinnerIcon"></div>
-                    <p id="loginSpinnerText">Memproses login...</p>
+                    <p id="loginSpinnerText" data-i18n="login.processing">Memproses login...</p>
                 </div>
             </form>
-            <div class="login-note">
-                Kredensial dan Security diatur sedemikian rupa agar terhidar
-                dari kejahatan Cyber.
-                Salam hangat dari Dev
+            <div class="login-note" data-i18n="login.note">
+                Kredensial dan Security diatur sedemikian rupa agar terhindar dari kejahatan Cyber. Salam hangat dari Dev
             </div>
         </div>
     </div>
@@ -48,37 +50,45 @@
     <div class="side-menu-backdrop" id="sideMenuBackdrop" hidden></div>
     <aside class="side-menu-panel" id="sideMenuPanel" aria-hidden="true">
         <div class="side-menu-top">
-            <span class="side-menu-title">Menu</span>
-            <button type="button" class="side-menu-close" id="sideMenuClose" aria-label="Tutup menu">&times;</button>
+            <span class="side-menu-title" data-i18n="menu.title">Menu</span>
+            <button type="button" class="side-menu-close" id="sideMenuClose" aria-label="Close">&times;</button>
         </div>
 
         <div class="side-menu-section">
-            <div class="side-menu-section-label">1. Profil Developer Website</div>
+            <div class="side-menu-section-label" data-i18n="lang.label">Bahasa</div>
+            <div class="lang-switch lang-switch-menu">
+                <button type="button" class="lang-btn" data-lang-btn="id">Indonesia</button>
+                <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            </div>
+        </div>
+
+        <div class="side-menu-section">
+            <div class="side-menu-section-label" data-i18n="menu.dev">1. Profil Developer Website</div>
             <div class="dev-profile-card">
                 <div class="dev-avatar">
                     <img src="dev-avatar.jpg" alt="Adi Ilyas" width="44" height="44" />
                 </div>
                 <div class="dev-profile-body">
                     <div class="dev-name">Adi Ilyas</div>
-                    <div class="dev-role">Developer — MLBB Unity Tools</div>
+                    <div class="dev-role" data-i18n="dev.role">Developer — MLBB Unity Tools</div>
                 </div>
             </div>
             <ul class="dev-info-list">
-                <li><span class="dev-info-key">Nama</span><span class="dev-info-val">Adi Ilyas</span></li>
-                <li><span class="dev-info-key">Sekolah</span><span class="dev-info-val">SMK PGRI</span></li>
-                <li><span class="dev-info-key">Moto</span><span class="dev-info-val">Berkarya didalam Gelap</span></li>
-                <li><span class="dev-info-key">Project</span><span class="dev-info-val">MLBB Unity Tools</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.name">Nama</span><span class="dev-info-val">Adi Ilyas</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.school">Sekolah</span><span class="dev-info-val">SMK PGRI</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.motto">Moto</span><span class="dev-info-val">Berkarya didalam Gelap</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.project">Project</span><span class="dev-info-val">MLBB Unity Tools</span></li>
             </ul>
         </div>
 
         <div class="side-menu-section">
-            <div class="side-menu-section-label">2. Info Username &amp; Password</div>
+            <div class="side-menu-section-label" data-i18n="menu.account">2. Info Username &amp; Password</div>
             <ul class="dev-info-list" id="sideMenuAccountList">
-                <li><span class="dev-info-key">Username</span><span class="dev-info-val" id="sideMenuUsername">—</span></li>
-                <li><span class="dev-info-key">Password</span><span class="dev-info-val">••••••••</span></li>
-                <li><span class="dev-info-key">Expired Date</span><span class="dev-info-val" id="sideMenuExpiry">—</span></li>
-                <li><span class="dev-info-key">Device Login</span><span class="dev-info-val" id="sideMenuDevices">—</span></li>
-                <li><span class="dev-info-key">Device ID</span><span class="dev-info-val" id="sideMenuDeviceId">—</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.username">Username</span><span class="dev-info-val" id="sideMenuUsername">—</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.password">Password</span><span class="dev-info-val">••••••••</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.expiry">Expired Date</span><span class="dev-info-val" id="sideMenuExpiry">—</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.devices">Device Login</span><span class="dev-info-val" id="sideMenuDevices">—</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.device_id">Device ID</span><span class="dev-info-val" id="sideMenuDeviceId">—</span></li>
             </ul>
         </div>
     </aside>
@@ -93,25 +103,29 @@
                 </button>
                 <div class="header-left-text">
                     <h1>MLBB Unity Tools</h1>
-                    <p>Hero.bytes Viewer, Document Extractor &amp; GameObject Overrider — Export/Import &amp; Patch</p>
+                    <p data-i18n="header.subtitle">Hero.bytes Viewer, Document Extractor &amp; GameObject Overrider — Export/Import &amp; Patch</p>
                 </div>
             </div>
             <div class="header-right">
-                <span class="sys-status-pill" id="sysStatusPill" title="Status koneksi">
+                <div class="lang-switch lang-switch-header">
+                    <button type="button" class="lang-btn" data-lang-btn="id">ID</button>
+                    <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
+                </div>
+                <span class="sys-status-pill" id="sysStatusPill" title="Status">
                     <span class="sys-status-dot"></span>
-                    <span class="sys-status-label">Online</span>
+                    <span class="sys-status-label" data-i18n="header.online">Online</span>
                 </span>
                 <span class="login-user-badge" id="loginUserBadge"></span>
-                <button class="btn btn-sm" id="logoutBtn" title="Keluar">Keluar</button>
+                <button class="btn btn-sm" id="logoutBtn" data-i18n="header.logout" data-i18n-title="header.logout" title="Keluar">Keluar</button>
             </div>
         </div>
         <audio id="bgmAudio" src="bgm.mp3" loop preload="auto"></audio>
 
         <!-- MENU TABS -->
         <div class="menu-tabs">
-            <div class="menu-tab active" data-panel="panel-hero">🧬 Hero.bytes Viewer</div>
-            <div class="menu-tab" data-panel="panel-doc">📦 DocumentExtractor</div>
-            <div class="menu-tab" data-panel="panel-go">⚡ GameObject Overrider</div>
+            <div class="menu-tab active" data-panel="panel-hero" data-i18n="tab.hero">🧬 Hero.bytes Viewer</div>
+            <div class="menu-tab" data-panel="panel-doc" data-i18n="tab.doc">📦 DocumentExtractor</div>
+            <div class="menu-tab" data-panel="panel-go" data-i18n="tab.go">⚡ GameObject Overrider</div>
         </div>
 
         <!-- ============================================================ -->
@@ -122,7 +136,7 @@
             <div class="upload-zone" id="heroDropZone">
                 <div class="upload-icon">📄</div>
                 <input type="file" id="heroFileInput" accept=".bytes" />
-                <label for="heroFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;">pilih Hero.bytes</label>
+                <label for="heroFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="hero.pick">pilih Hero.bytes</label>
                 <div class="file-name" id="heroFileName">upload file ke sini, atau pilih secara manual</div>
                 <div class="file-size" id="heroFileSize"></div>
                 <div class="action-row">
@@ -181,7 +195,7 @@
             <div class="upload-zone" id="docDropZone">
                 <div class="upload-icon">📦</div>
                 <input type="file" id="docFileInput" accept=".unity3d" />
-                <label for="docFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;">pilih Document.unity3d</label>
+                <label for="docFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="doc.pick">pilih Document.unity3d</label>
                 <div class="file-name" id="docFileName">upload Document.unity3d</div>
                 <div class="file-size" id="docFileSize"></div>
                 <div class="action-row">
@@ -272,7 +286,7 @@
             <div class="upload-zone" id="goDropZone">
                 <div class="upload-icon">⚡</div>
                 <input type="file" id="goFileInput" accept=".unity3d" />
-                <label for="goFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;">pilih file .unity3d</label>
+                <label for="goFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="go.pick">pilih file .unity3d</label>
                 <div class="file-name" id="goFileName">upload 1 file .unity3d ke sini</div>
                 <div class="file-size" id="goFileSize"></div>
             </div>
@@ -311,7 +325,7 @@
         </div>
 
         <!-- FOOTER -->
-        <div class="footer">semua proses di sini, tidak ada data yang dikirim ke mana pun</div>
+        <div class="footer" data-i18n="footer">semua proses di sini, tidak ada data yang dikirim ke mana pun</div>
     </div>
 
 
@@ -323,43 +337,47 @@
                     <span></span><span></span><span></span>
                 </button>
                 <div class="header-left-text">
-                    <h1>⚙️ Admin Panel</h1>
-                    <p>Kelola Username, Password, Expiry &amp; Batas Device</p>
+                    <h1 data-i18n="admin.title">⚙️ Admin Panel</h1>
+                    <p data-i18n="admin.subtitle">Kelola Username, Password, Expiry &amp; Batas Device</p>
                 </div>
             </div>
             <div class="header-right">
+                <div class="lang-switch lang-switch-header">
+                    <button type="button" class="lang-btn" data-lang-btn="id">ID</button>
+                    <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
+                </div>
                 <span class="login-user-badge" id="adminUserBadge"></span>
-                <button class="btn btn-sm" id="adminLogoutBtn" title="Keluar">Keluar</button>
+                <button class="btn btn-sm" id="adminLogoutBtn" data-i18n="header.logout" title="Keluar">Keluar</button>
             </div>
         </div>
 
         <div class="admin-section">
             <div class="admin-card">
-                <h2>➕ Tambah / Edit User</h2>
+                <h2 data-i18n="admin.add">➕ Tambah / Edit User</h2>
                 <form id="adminUserForm" autocomplete="off">
                     <input type="hidden" id="adminEditIndex" value="-1" />
                     <div class="admin-form-grid">
                         <div class="login-field">
-                            <label for="adminUsername">Username</label>
+                            <label for="adminUsername" data-i18n="admin.username">Username</label>
                             <input type="text" id="adminUsername" required maxlength="64" placeholder="username" />
                         </div>
                         <div class="login-field">
-                            <label for="adminPassword">Password</label>
-                            <input type="password" id="adminPassword" maxlength="128" placeholder="password (kosongkan jika tidak diubah)" autocomplete="new-password" />
+                            <label for="adminPassword" data-i18n="admin.password">Password</label>
+                            <input type="password" id="adminPassword" maxlength="128" data-i18n-placeholder="admin.password.ph" placeholder="password (kosongkan jika tidak diubah)" autocomplete="new-password" />
                         </div>
                         <div class="login-field">
-                            <label for="adminMaxDevices">Max Device (kosong = unlimited)</label>
-                            <input type="number" id="adminMaxDevices" min="1" max="99" placeholder="contoh: 2" />
+                            <label for="adminMaxDevices" data-i18n="admin.max_devices">Max Device (kosong = unlimited)</label>
+                            <input type="number" id="adminMaxDevices" min="1" max="99" data-i18n-placeholder="admin.max_devices.ph" placeholder="contoh: 2" />
                         </div>
                         <div class="login-field">
-                            <label for="adminExpiry">Tanggal Kedaluarsa (opsional)</label>
+                            <label for="adminExpiry" data-i18n="admin.expiry">Tanggal Kedaluarsa (opsional)</label>
                             <input type="date" id="adminExpiry" />
                         </div>
                     </div>
                     <div class="admin-form-actions">
-                        <button type="submit" class="btn btn-primary" id="adminSaveBtn">Simpan User</button>
-                        <button type="button" class="btn" id="adminCancelEditBtn" style="display:none;">Batal Edit</button>
-                        <button type="button" class="btn" id="adminClearFormBtn" title="Kosongkan Username &amp; Password">Bersihkan Form</button>
+                        <button type="submit" class="btn btn-primary" id="adminSaveBtn" data-i18n="admin.save">Simpan User</button>
+                        <button type="button" class="btn" id="adminCancelEditBtn" style="display:none;" data-i18n="admin.cancel">Batal Edit</button>
+                        <button type="button" class="btn" id="adminClearFormBtn" data-i18n="admin.clear">Bersihkan Form</button>
                     </div>
                 </form>
                 <div class="login-error" id="adminFormError" style="display:none; margin-top:10px;"></div>
@@ -367,21 +385,21 @@
 
             <div class="admin-card">
                 <div class="admin-card-header-row">
-                    <h2>👥 Daftar User</h2>
-                    <button type="button" class="btn btn-sm btn-danger" id="adminDeleteAllManagedBtn" title="Hapus semua akun kecuali admin">Hapus Semua</button>
+                    <h2 data-i18n="admin.list">👥 Daftar User</h2>
+                    <button type="button" class="btn btn-sm btn-danger" id="adminDeleteAllManagedBtn" data-i18n="admin.delete_all">Hapus Semua</button>
                 </div>
-                <p class="admin-hint">Data user &amp; device disimpan di <strong>Supabase</strong>. Setiap akun non-admin punya tombol Edit / Hapus / Reset Device.</p>
+                <p class="admin-hint" data-i18n="admin.hint">Data user &amp; device disimpan di Supabase. Setiap akun non-admin punya tombol Edit / Hapus / Reset Device.</p>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="adminUserTable">
                         <thead>
                             <tr>
-                                <th>Username</th>
-                                <th>Password</th>
-                                <th>Max Device</th>
-                                <th>Device Aktif</th>
-                                <th>Expiry</th>
-                                <th>Sumber</th>
-                                <th>Aksi</th>
+                                <th data-i18n="admin.th.user">Username</th>
+                                <th data-i18n="admin.th.pass">Password</th>
+                                <th data-i18n="admin.th.max">Max Device</th>
+                                <th data-i18n="admin.th.active">Device Aktif</th>
+                                <th data-i18n="admin.th.expiry">Expiry</th>
+                                <th data-i18n="admin.th.source">Sumber</th>
+                                <th data-i18n="admin.th.actions">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="adminUserTableBody">
@@ -391,15 +409,15 @@
             </div>
 
             <div class="admin-card admin-note">
-                <strong>Catatan penting:</strong>
+                <strong data-i18n="admin.note.title">Catatan penting:</strong>
                 <ul>
-                    <li>Akun admin khusus tidak bisa dihapus/diubah lewat panel ini.</li>
-                    <li>User baru dari panel ini langsung masuk ke <strong>Supabase</strong> dan bisa login dari device mana pun.</li>
-                    <li><strong>Hapus</strong> menonaktifkan akun di database + menghapus device registry.</li>
-                    <li><strong>Hapus Semua</strong> menonaktifkan semua akun non-admin di Supabase.</li>
-                    <li>Batas device disimpan di Supabase (global, sinkron antar device).</li>
-                    <li>Untuk reset device suatu user, klik tombol "Reset Device" di tabel.</li>
-                    <li>Password disimpan sebagai SHA-256 hash di server (tidak pernah ditampilkan).</li>
+                    <li data-i18n="admin.note.1">Akun admin khusus tidak bisa dihapus/diubah lewat panel ini.</li>
+                    <li data-i18n="admin.note.2">User baru dari panel ini langsung masuk ke Supabase dan bisa login dari device mana pun.</li>
+                    <li data-i18n="admin.note.3">Hapus menonaktifkan akun di database + menghapus device registry.</li>
+                    <li data-i18n="admin.note.4">Hapus Semua menonaktifkan semua akun non-admin di Supabase.</li>
+                    <li data-i18n="admin.note.5">Batas device disimpan di Supabase (global, sinkron antar device).</li>
+                    <li data-i18n="admin.note.6">Untuk reset device suatu user, klik tombol "Reset Device" di tabel.</li>
+                    <li data-i18n="admin.note.7">Password disimpan sebagai SHA-256 hash di server (tidak pernah ditampilkan).</li>
                 </ul>
             </div>
         </div>
@@ -477,7 +495,8 @@
         </button>
     </div>
 
-    <script src="credentials.js?v=202608201350"></script>
-    <script src="app.js?v=202608201350" defer></script>
+    <script src="i18n.js?v=202608201400"></script>
+    <script src="credentials.js?v=202608201400"></script>
+    <script src="app.js?v=202608201400" defer></script>
 </body>
 </html>

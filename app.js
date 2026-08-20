@@ -1105,7 +1105,10 @@
                 if (isLockedOut()) {
                     const sec = remainingLockSeconds();
                     if (loginError) {
-                        loginError.textContent = '🔒 Terlalu banyak percobaan. Coba lagi dalam ' + sec + ' detik.';
+                        const _t = window.MLBB_i18n && MLBB_i18n.t;
+                        loginError.textContent = _t
+                            ? _t('login.err.lock_retry', { sec: sec })
+                            : ('🔒 Terlalu banyak percobaan. Coba lagi dalam ' + sec + ' detik.');
                         loginError.style.display = 'block';
                     }
                     return false;
@@ -1117,7 +1120,7 @@
                     loginError.style.display = 'none';
                     loginError.textContent = '';
                 }
-                showSpinner('Memproses login...');
+                showSpinner((window.MLBB_i18n && MLBB_i18n.t('login.processing')) || 'Memproses login...');
 
                 validateCredentials(username, password).then(function (result) {
                     if (!result.ok) {
@@ -1130,16 +1133,24 @@
                             loginInProgress = false;
 
                             if (loginError) {
+                                const _t = window.MLBB_i18n && MLBB_i18n.t;
                                 if (result.expired) {
-                                    loginError.textContent = '❌ Akun sudah kedaluarsa.';
+                                    loginError.textContent = _t ? _t('login.err.expired') : '❌ Akun sudah kedaluarsa.';
                                 } else if (result.maxDevices) {
-                                    loginError.textContent = '📱 Batas device tercapai (' + result.current + '/' + result.max + '). Hubungi admin untuk reset.';
+                                    loginError.textContent = _t
+                                        ? _t('login.err.devices', { cur: result.current, max: result.max })
+                                        : ('📱 Batas device tercapai (' + result.current + '/' + result.max + '). Hubungi admin untuk reset.');
                                 } else if (isLockedOut()) {
-                                    loginError.textContent = '🔒 Terlalu banyak percobaan gagal. Akun terkunci sementara ' + Math.ceil(LOCKOUT_MS / 1000) + ' detik.';
+                                    loginError.textContent = _t
+                                        ? _t('login.err.lock', { sec: Math.ceil(LOCKOUT_MS / 1000) })
+                                        : ('🔒 Terlalu banyak percobaan gagal. Akun terkunci sementara ' + Math.ceil(LOCKOUT_MS / 1000) + ' detik.');
                                 } else {
                                     const left = MAX_FAIL_ATTEMPTS - readFailState().count;
-                                    loginError.textContent = 'Username atau password salah.' +
-                                        (left > 0 && left < MAX_FAIL_ATTEMPTS ? ' (sisa ' + left + ' percobaan)' : '');
+                                    let msg = _t ? _t('login.err.wrong') : 'Username atau password salah.';
+                                    if (left > 0 && left < MAX_FAIL_ATTEMPTS) {
+                                        msg += _t ? _t('login.err.left', { n: left }) : (' (sisa ' + left + ' percobaan)');
+                                    }
+                                    loginError.textContent = msg;
                                 }
                                 loginError.style.display = 'block';
                             }
@@ -1154,16 +1165,17 @@
                     // === SUCCESS PATH ===
                     clearFailState();
                     setTimeout(function () {
-                        showSpinnerSuccess('Berhasil! Mengalihkan...');
+                        showSpinnerSuccess((window.MLBB_i18n && MLBB_i18n.t('login.success')) || 'Berhasil! Mengalihkan...');
                         setTimeout(function () {
                             setSession(result.username, result.isAdmin, result.token || null);
                             hideLoginOverlaySmooth(function () {
+                                const _t = window.MLBB_i18n && MLBB_i18n.t;
                                 if (result.isAdmin) {
                                     showAdminApp(result.username, true);
-                                    showToast('🛡️ Selamat datang Admin, ' + result.username, 'success');
+                                    showToast(_t ? _t('toast.welcome_admin', { name: result.username }) : ('🛡️ Selamat datang Admin, ' + result.username), 'success');
                                 } else {
                                     showMainApp(result.username, true);
-                                    showToast('✅ Selamat datang, ' + result.username, 'success');
+                                    showToast(_t ? _t('toast.welcome', { name: result.username }) : ('✅ Selamat datang, ' + result.username), 'success');
                                 }
                                 loginInProgress = false;
                             });
@@ -1248,7 +1260,7 @@
                     if (btnAdmin) btnAdmin.classList.remove('is-open');
                 } catch (e) {}
                 showLoginScreen();
-                showToast('Anda telah keluar', 'info');
+                showToast((window.MLBB_i18n && MLBB_i18n.t('toast.logout')) || 'Anda telah keluar', 'info');
             }
 
             if (logoutBtn) {
@@ -1285,10 +1297,11 @@
                     if (unameEl) unameEl.textContent = username;
 
                     const user = (username && username !== '—') ? getUserByUsername(username) : null;
+                    const _t = window.MLBB_i18n && MLBB_i18n.t;
                     if (expEl) {
                         expEl.classList.remove('is-expired', 'is-ok');
                         if (!user || !user.expiryDate) {
-                            expEl.textContent = 'Tidak ada (unlimited)';
+                            expEl.textContent = _t ? _t('menu.expiry.none') : 'Tidak ada (unlimited)';
                             expEl.classList.add('is-ok');
                         } else {
                             const expDate = new Date(String(user.expiryDate));
@@ -1296,7 +1309,7 @@
                             today.setHours(0, 0, 0, 0);
                             const label = String(user.expiryDate);
                             if (isNaN(expDate.getTime()) || today > expDate) {
-                                expEl.textContent = label + ' (kadaluarsa)';
+                                expEl.textContent = label + (_t ? _t('menu.expiry.expired') : ' (kadaluarsa)');
                                 expEl.classList.add('is-expired');
                             } else {
                                 expEl.textContent = label;
@@ -1308,16 +1321,16 @@
                         if (!user) {
                             devEl.textContent = '—';
                         } else if (user.isAdmin) {
-                            devEl.textContent = 'Admin (tanpa batas)';
+                            devEl.textContent = _t ? _t('menu.dev.admin') : 'Admin (tanpa batas)';
                             devEl.classList.add('is-ok');
                         } else {
                             const list = getDevicesForUser(user.username);
                             const max = user.maxDevices == null ? null : Number(user.maxDevices);
                             const cur = list.length;
                             if (max == null || max <= 0) {
-                                devEl.textContent = cur + ' device (unlimited)';
+                                devEl.textContent = _t ? _t('menu.dev.unlimited', { n: cur }) : (cur + ' device (unlimited)');
                             } else {
-                                devEl.textContent = cur + ' / ' + max + ' device';
+                                devEl.textContent = _t ? _t('menu.dev.count', { cur: cur, max: max }) : (cur + ' / ' + max + ' device');
                             }
                         }
                     }
@@ -1407,7 +1420,8 @@
 
             function renderAdminUserTable() {
                 if (!adminUserTableBody) return;
-                adminUserTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">Memuat dari Supabase…</td></tr>';
+                adminUserTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">' +
+                    ((window.MLBB_i18n && MLBB_i18n.t('admin.loading')) || 'Memuat dari Supabase…') + '</td></tr>';
 
                 adminApi('/api/admin/users').then(function (data) {
                     if (data.unauthorized) {
@@ -1436,16 +1450,17 @@
                         if (isAdminAcc) {
                             actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
                         } else {
+                            const _t = window.MLBB_i18n && MLBB_i18n.t;
                             actions = '<div class="admin-actions">' +
-                                '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>' +
-                                '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>' +
-                                '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>' +
+                                '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.edit') : 'Edit') + '</button>' +
+                                '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.delete') : 'Hapus') + '</button>' +
+                                '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.reset_device') : 'Reset Device') + '</button>' +
                                 '</div>';
                         }
                         rows.push(
                             '<tr>' +
                             '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +
-                            '<td class="pwd-mask" title="Password disimpan sebagai hash">' + escapeHtml(maskPassword(u)) + '</td>' +
+                            '<td class="pwd-mask" title="Password hash">' + escapeHtml(maskPassword(u)) + '</td>' +
                             '<td>' + escapeHtml(maxDev) + '</td>' +
                             '<td>' + devCount + (u.maxDevices != null ? ' / ' + u.maxDevices : '') + '</td>' +
                             '<td>' + expiryStr + '</td>' +
@@ -1456,7 +1471,8 @@
                     });
                     adminUserTableBody.innerHTML = rows.length
                         ? rows.join('')
-                        : '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">Belum ada user di Supabase</td></tr>';
+                        : '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">' +
+                          ((window.MLBB_i18n && MLBB_i18n.t('admin.empty')) || 'Belum ada user di Supabase') + '</td></tr>';
                 }).catch(function () {
                     renderAdminUserTableLocal();
                     showToast('Gagal memuat user dari server — tampil lokal', 'warning');
@@ -1607,7 +1623,11 @@
                             showAdminFormError(data.message || 'Gagal menyimpan user.');
                             return;
                         }
-                        showToast(isEdit ? '✅ User diperbarui di Supabase' : '✅ User baru ditambahkan ke Supabase', 'success');
+                        showToast(
+                            (window.MLBB_i18n && MLBB_i18n.t(isEdit ? 'toast.user_updated' : 'toast.user_saved'))
+                            || (isEdit ? '✅ User diperbarui di Supabase' : '✅ User baru ditambahkan ke Supabase'),
+                            'success'
+                        );
                         resetAdminForm();
                         if (adminPassword) adminPassword.placeholder = 'Masukkan password';
                         renderAdminUserTable();
@@ -1644,7 +1664,11 @@
                                 showToast(data.message || 'Gagal reset device', 'error');
                                 return;
                             }
-                            showToast('Device di-reset untuk ' + uname, 'success');
+                            showToast(
+                                (window.MLBB_i18n && MLBB_i18n.t('toast.device_reset', { name: uname }))
+                                || ('Device di-reset untuk ' + uname),
+                                'success'
+                            );
                             renderAdminUserTable();
                         }).catch(function () {
                             btn.disabled = false;
@@ -1689,7 +1713,7 @@
             if (adminClearFormBtn) {
                 adminClearFormBtn.addEventListener('click', function () {
                     resetAdminForm();
-                    showToast('Form Username & Password dikosongkan', 'info');
+                    showToast((window.MLBB_i18n && MLBB_i18n.t('toast.form_cleared')) || 'Form Username & Password dikosongkan', 'info');
                 });
             }
 

@@ -1846,3 +1846,30 @@ label{color:#9aa8b7!important;font:10px var(--sys-mono)!important}
 .dev-info-val.is-ok{color:var(--sys-ok,#5ee6a8)}
 
 body.side-menu-open{overflow:hidden}
+
+/* ========== LANGUAGE SWITCH ========== */
+.lang-switch{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px;
+  border:1px solid var(--sys-line,#1e2a38);
+  border-radius:10px;
+  background:#080d13;
+}
+.lang-btn{
+  border:none;background:transparent;cursor:pointer;
+  padding:5px 10px;border-radius:7px;
+  font:600 11px var(--sys-mono,monospace);
+  color:#718193;letter-spacing:.04em;
+  transition:background .15s,color .15s;
+}
+.lang-btn:hover{color:var(--sys-accent,#5ee7ff)}
+.lang-btn.lang-active{
+  background:rgba(94,231,255,.12);
+  color:var(--sys-accent,#5ee7ff);
+}
+.lang-switch-header{margin-right:2px}
+.lang-switch-menu{width:100%;justify-content:stretch}
+.lang-switch-menu .lang-btn{flex:1;text-align:center}
+#loginLangSwitch{
+  display:flex;justify-content:center;margin:0 0 14px;
+}
