@@ -1767,41 +1767,57 @@
                 const closeBtn = document.getElementById('tutorialCloseBtn');
                 const dontShow = document.getElementById('tutorialDontShow');
                 if (!overlay || !closeBtn) return;
-                if (overlay.dataset.inited === '1') return;
-                overlay.dataset.inited = '1';
 
                 const STORAGE_KEY = 'mlbb_tutorial_hide';
 
-                function hideTutorial() {
+                function hideTutorial(e) {
+                    if (e) {
+                        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+                    }
                     if (dontShow && dontShow.checked) {
-                        try { localStorage.setItem(STORAGE_KEY, '1'); } catch (e) {}
+                        try { localStorage.setItem(STORAGE_KEY, '1'); } catch (err) {}
                     }
                     overlay.classList.remove('show');
+                    overlay.style.opacity = '0';
+                    overlay.style.visibility = 'hidden';
                     setTimeout(function () {
                         overlay.style.display = 'none';
-                    }, 350);
+                        overlay.style.pointerEvents = 'none';
+                    }, 280);
                 }
 
-                closeBtn.addEventListener('click', hideTutorial);
-                overlay.addEventListener('click', function (e) {
-                    if (e.target === overlay) hideTutorial();
-                });
-                document.addEventListener('keydown', function (e) {
-                    if (e.key === 'Escape' && overlay.classList.contains('show')) hideTutorial();
-                });
+                // Always (re)bind — safe if called more than once
+                if (overlay.dataset.inited !== '1') {
+                    overlay.dataset.inited = '1';
+                    closeBtn.addEventListener('click', hideTutorial);
+                    closeBtn.addEventListener('touchend', function (e) {
+                        e.preventDefault();
+                        hideTutorial(e);
+                    }, { passive: false });
+                    overlay.addEventListener('click', function (e) {
+                        if (e.target === overlay) hideTutorial(e);
+                    });
+                    document.addEventListener('keydown', function (e) {
+                        if (e.key === 'Escape' && overlay.classList.contains('show')) hideTutorial(e);
+                    });
+                }
 
                 let shouldShow = true;
                 try {
                     if (localStorage.getItem(STORAGE_KEY) === '1') shouldShow = false;
-                } catch (e) {}
+                } catch (err) {}
 
                 if (shouldShow) {
+                    overlay.style.pointerEvents = 'auto';
                     overlay.style.display = 'flex';
+                    overlay.style.opacity = '';
+                    overlay.style.visibility = '';
                     requestAnimationFrame(function () {
                         requestAnimationFrame(function () { overlay.classList.add('show'); });
                     });
                 } else {
                     overlay.style.display = 'none';
+                    overlay.style.pointerEvents = 'none';
                 }
             }
 
