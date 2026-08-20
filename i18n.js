@@ -50,6 +50,8 @@
       'menu.dev.unlimited': '{n} device (unlimited)',
       'menu.dev.count': '{cur} / {max} device',
       'dev.role': 'Developer — MLBB Unity Tools',
+      'menu.support': '3. Supported by',
+      'menu.support_note': 'Bantuan AI untuk UI & tooling',
 
       'btn.choose': 'pilih file',
       'btn.scan': '🔍 scan semua hero',
@@ -243,6 +245,8 @@
       'menu.dev.admin': 'Admin (unlimited)',
       'menu.dev.unlimited': '{n} device(s) (unlimited)',
       'menu.dev.count': '{cur} / {max} device(s)',
+      'menu.support': '3. Supported by',
+      'menu.support_note': 'AI assistance for UI & tooling',
       'dev.role': 'Developer — MLBB Unity Tools',
 
       'btn.choose': 'choose file',
