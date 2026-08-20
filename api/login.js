@@ -1,18 +1,14 @@
 /**
  * POST /api/login
  * Body: { username, password, deviceId }
- * Response: { ok, username?, isAdmin?, expired?, maxDevices?, current?, max?, message? }
+ * Response: { ok, username?, isAdmin?, token?, expired?, maxDevices?, current?, max?, message? }
  *
  * Env (Vercel):
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  */
-const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
-
-function sha256Hex(text) {
-  return crypto.createHash('sha256').update(String(text || ''), 'utf8').digest('hex');
-}
+const { getSupabase, sha256Hex, parseBody, json, issueToken } = require('./lib/session');
 
 function timingSafeEqualStr(a, b) {
   const aa = Buffer.from(String(a || ''), 'utf8');
@@ -25,40 +21,26 @@ function timingSafeEqualStr(a, b) {
   }
 }
 
-function json(res, status, body) {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.end(JSON.stringify(body));
-}
-
 module.exports = async function handler(req, res) {
-  // CORS / method
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res.end();
   }
   if (req.method !== 'POST') {
     return json(res, 405, { ok: false, message: 'Method not allowed' });
   }
 
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
+  const supabase = getSupabase();
+  if (!supabase) {
     return json(res, 500, {
       ok: false,
       message: 'Server misconfigured: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'
     });
   }
 
-  let body = req.body;
-  if (typeof body === 'string') {
-    try { body = JSON.parse(body); } catch { body = {}; }
-  }
-  body = body || {};
-
+  const body = parseBody(req);
   const username = String(body.username || '').trim();
   const password = String(body.password || '');
   const deviceId = String(body.deviceId || '').trim();
@@ -70,11 +52,6 @@ module.exports = async function handler(req, res) {
     return json(res, 200, { ok: false, message: 'Device ID tidak valid' });
   }
 
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-
-  // Cari user (case-insensitive)
   const { data: users, error: findErr } = await supabase
     .from('app_users')
     .select('username, password_hash, is_admin, max_devices, expiry_date, is_active')
@@ -86,13 +63,11 @@ module.exports = async function handler(req, res) {
     return json(res, 500, { ok: false, message: 'Gagal mengakses database' });
   }
 
-  // Exact case-insensitive match (ilike bisa partial di beberapa kasus; filter exact)
   const row = (users || []).find(
     (u) => String(u.username || '').toLowerCase() === username.toLowerCase()
   );
 
   if (!row || !row.is_active) {
-    // Delay tipis anti-timing (opsional)
     await new Promise((r) => setTimeout(r, 80 + Math.floor(Math.random() * 80)));
     return json(res, 200, { ok: false, message: 'Username atau password salah' });
   }
@@ -103,7 +78,6 @@ module.exports = async function handler(req, res) {
     return json(res, 200, { ok: false, message: 'Username atau password salah' });
   }
 
-  // Expiry
   if (row.expiry_date) {
     const expDate = new Date(String(row.expiry_date));
     const today = new Date();
@@ -116,7 +90,6 @@ module.exports = async function handler(req, res) {
   const uname = String(row.username);
   const isAdmin = !!row.is_admin;
 
-  // Device limit (skip admin)
   if (!isAdmin) {
     const maxRaw = row.max_devices;
     const unlimited = maxRaw == null || maxRaw === '' || Number(maxRaw) <= 0;
@@ -158,19 +131,18 @@ module.exports = async function handler(req, res) {
         first_seen: new Date().toISOString(),
         last_seen: new Date().toISOString()
       });
-      if (insErr) {
-        // Race: unique violation → treat as already registered
-        if (insErr.code !== '23505') {
-          console.error('supabase insert device', insErr);
-          return json(res, 500, { ok: false, message: 'Gagal registrasi device' });
-        }
+      if (insErr && insErr.code !== '23505') {
+        console.error('supabase insert device', insErr);
+        return json(res, 500, { ok: false, message: 'Gagal registrasi device' });
       }
     }
   }
 
+  const token = issueToken(uname, isAdmin);
   return json(res, 200, {
     ok: true,
     username: uname,
-    isAdmin
+    isAdmin,
+    token: token || undefined
   });
 };

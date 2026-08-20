@@ -370,7 +370,7 @@
                     <h2>👥 Daftar User</h2>
                     <button type="button" class="btn btn-sm btn-danger" id="adminDeleteAllManagedBtn" title="Hapus semua akun kecuali admin">Hapus Semua</button>
                 </div>
-                <p class="admin-hint">Setiap akun (kecuali admin) punya tombol <strong>Hapus</strong>. User managed dihapus dari localStorage; user hardcoded dinonaktifkan di browser ini (blocklist).</p>
+                <p class="admin-hint">Data user &amp; device disimpan di <strong>Supabase</strong>. Setiap akun non-admin punya tombol Edit / Hapus / Reset Device.</p>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="adminUserTable">
                         <thead>
@@ -393,13 +393,13 @@
             <div class="admin-card admin-note">
                 <strong>Catatan penting:</strong>
                 <ul>
-                    <li>Akun <code>master</code> adalah admin khusus dan tidak bisa dihapus/diubah lewat panel ini.</li>
-                    <li>Tombol <strong>Hapus</strong> ada di <em>setiap</em> akun non-admin. Managed dihapus dari localStorage; hardcoded dinonaktifkan lewat blocklist browser ini.</li>
-                    <li><strong>Hapus Semua</strong> menghapus/menonaktifkan semua akun kecuali admin.</li>
-                    <li><strong>Bersihkan Form</strong> mengosongkan field Username &amp; Password di form tambah/edit.</li>
-                    <li>Batas device disimpan di localStorage browser ini. Setiap browser/device punya storage sendiri, jadi batas bersifat lokal per browser.</li>
+                    <li>Akun admin khusus tidak bisa dihapus/diubah lewat panel ini.</li>
+                    <li>User baru dari panel ini langsung masuk ke <strong>Supabase</strong> dan bisa login dari device mana pun.</li>
+                    <li><strong>Hapus</strong> menonaktifkan akun di database + menghapus device registry.</li>
+                    <li><strong>Hapus Semua</strong> menonaktifkan semua akun non-admin di Supabase.</li>
+                    <li>Batas device disimpan di Supabase (global, sinkron antar device).</li>
                     <li>Untuk reset device suatu user, klik tombol "Reset Device" di tabel.</li>
-                    <li>User yang ditambahkan di panel ini hanya tersimpan di browser ini (localStorage). Untuk permanen, salin ke <code>credentials.js</code> dalam format <code>passwordHash</code> (SHA-256 hex).</li>
+                    <li>Password disimpan sebagai SHA-256 hash di server (tidak pernah ditampilkan).</li>
                 </ul>
             </div>
         </div>
@@ -477,7 +477,7 @@
         </button>
     </div>
 
-    <script src="credentials.js?v=202608201220"></script>
-    <script src="app.js?v=202608201220" defer></script>
+    <script src="credentials.js?v=202608201350"></script>
+    <script src="app.js?v=202608201350" defer></script>
 </body>
 </html>

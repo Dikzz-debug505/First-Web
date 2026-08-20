@@ -851,6 +851,7 @@
                             ok: true,
                             username: String(data.username || u).trim(),
                             isAdmin: !!data.isAdmin,
+                            token: data.token || null,
                             _source: 'supabase'
                         };
                     }
@@ -933,7 +934,7 @@
                 return Math.random().toString(36).slice(2) + Date.now().toString(36);
             }
 
-            function setSession(username, isAdmin) {
+            function setSession(username, isAdmin, token) {
                 try {
                     const nonce = secureRandomToken();
                     sessionStorage.setItem(LOGIN_SESSION_KEY, JSON.stringify({
@@ -941,7 +942,8 @@
                         a: !!isAdmin,
                         t: Date.now(),
                         n: nonce,
-                        d: getOrCreateDeviceId()
+                        d: getOrCreateDeviceId(),
+                        token: token || null
                     }));
                 } catch (e) {}
             }
@@ -971,6 +973,34 @@
                 } catch (e) {
                     return null;
                 }
+            }
+
+            function getAdminToken() {
+                const sess = readSession();
+                return (sess && sess.token) ? String(sess.token) : '';
+            }
+
+            async function adminApi(path, options) {
+                const opts = options || {};
+                const headers = Object.assign({
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + getAdminToken()
+                }, opts.headers || {});
+                const res = await fetch(path, {
+                    method: opts.method || 'GET',
+                    headers: headers,
+                    body: opts.body != null ? JSON.stringify(opts.body) : undefined,
+                    credentials: 'same-origin'
+                });
+                let data = null;
+                try { data = await res.json(); } catch (e) { data = null; }
+                if (res.status === 401) {
+                    return { ok: false, unauthorized: true, message: (data && data.message) || 'Sesi admin berakhir. Login ulang.' };
+                }
+                if (!data || typeof data !== 'object') {
+                    return { ok: false, message: 'Respons server tidak valid' };
+                }
+                return data;
             }
 
             function setFormDisabled(disabled) {
@@ -1126,7 +1156,7 @@
                     setTimeout(function () {
                         showSpinnerSuccess('Berhasil! Mengalihkan...');
                         setTimeout(function () {
-                            setSession(result.username, result.isAdmin);
+                            setSession(result.username, result.isAdmin, result.token || null);
                             hideLoginOverlaySmooth(function () {
                                 if (result.isAdmin) {
                                     showAdminApp(result.username, true);
@@ -1154,34 +1184,35 @@
 
             (function initAuth() {
                 if (!loginOverlay) return;
-                const users = getUsers();
-                if (users.length === 0) {
-                    if (mainApp) showMainApp('guest');
-                    return;
-                }
                 const sess = readSession();
                 if (sess && sess.u) {
+                    // Sesi dari Supabase (punya token) atau lokal
+                    if (sess.a) {
+                        showAdminApp(sess.u);
+                        return;
+                    }
                     const user = getUserByUsername(sess.u);
-                    if (user) {
-                        // re-validate expiry
-                        if (user.expiryDate) {
-                            const expDate = new Date(String(user.expiryDate));
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            if (!isNaN(expDate.getTime()) && today > expDate) {
-                                clearSession();
-                                showLoginScreen();
-                                return;
-                            }
+                    if (user && user.expiryDate) {
+                        const expDate = new Date(String(user.expiryDate));
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        if (!isNaN(expDate.getTime()) && today > expDate) {
+                            clearSession();
+                            showLoginScreen();
+                            return;
                         }
-                        if (user.isAdmin || sess.a) {
-                            showAdminApp(sess.u);
-                        } else {
-                            showMainApp(sess.u);
-                        }
+                    }
+                    // User Supabase non-admin: tetap izinkan sesi (expiry sudah dicek saat login)
+                    if (user || sess.token) {
+                        showMainApp(sess.u);
                         return;
                     }
                     clearSession();
+                }
+                const users = getUsers();
+                if (users.length === 0 && !sess) {
+                    // Tidak ada user lokal & tidak ada sesi — tetap tampilkan login
+                    // (Supabase bisa punya user meski credentials.js kosong)
                 }
                 showLoginScreen();
             })();
@@ -1359,9 +1390,8 @@
             const adminUserTableBody = document.getElementById('adminUserTableBody');
 
             function maskPassword(u) {
-                // Prefer showing that credential is hashed; never reveal hash/plaintext in UI
-                if (u && (u.passwordHash || (u.password && u.password.length > 0))) {
-                    return u.passwordHash ? '•••••••• (hash)' : '••••••••';
+                if (u && (u.hasPassword || u.passwordHash || (u.password && u.password.length > 0))) {
+                    return '•••••••• (hash)';
                 }
                 return '—';
             }
@@ -1372,37 +1402,105 @@
                     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             }
 
+            // Cache daftar user dari Supabase untuk edit form
+            let adminUsersCache = [];
+
             function renderAdminUserTable() {
                 if (!adminUserTableBody) return;
+                adminUserTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">Memuat dari Supabase…</td></tr>';
+
+                adminApi('/api/admin/users').then(function (data) {
+                    if (data.unauthorized) {
+                        adminUserTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff6b7a;">Sesi berakhir — login ulang sebagai admin</td></tr>';
+                        showToast(data.message || 'Login ulang sebagai admin', 'error');
+                        return;
+                    }
+                    if (!data.ok || !Array.isArray(data.users)) {
+                        // Fallback lokal jika API belum ada
+                        renderAdminUserTableLocal();
+                        if (data.message) showToast(data.message, 'warning');
+                        return;
+                    }
+                    adminUsersCache = data.users;
+                    const rows = [];
+                    data.users.forEach(function (u) {
+                        if (u.isActive === false) return; // sembunyikan soft-deleted
+                        const isAdminAcc = !!u.isAdmin;
+                        const maxDev = u.maxDevices == null ? '∞' : String(u.maxDevices);
+                        const srcBadge = isAdminAcc
+                            ? '<span class="admin-badge admin">ADMIN</span>'
+                            : '<span class="admin-badge managed">supabase</span>';
+                        const expiryStr = u.expiryDate ? escapeHtml(String(u.expiryDate)) : '—';
+                        const devCount = Number(u.deviceCount) || 0;
+                        let actions = '';
+                        if (isAdminAcc) {
+                            actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
+                        } else {
+                            actions = '<div class="admin-actions">' +
+                                '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>' +
+                                '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>' +
+                                '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>' +
+                                '</div>';
+                        }
+                        rows.push(
+                            '<tr>' +
+                            '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +
+                            '<td class="pwd-mask" title="Password disimpan sebagai hash">' + escapeHtml(maskPassword(u)) + '</td>' +
+                            '<td>' + escapeHtml(maxDev) + '</td>' +
+                            '<td>' + devCount + (u.maxDevices != null ? ' / ' + u.maxDevices : '') + '</td>' +
+                            '<td>' + expiryStr + '</td>' +
+                            '<td>' + srcBadge + '</td>' +
+                            '<td>' + actions + '</td>' +
+                            '</tr>'
+                        );
+                    });
+                    adminUserTableBody.innerHTML = rows.length
+                        ? rows.join('')
+                        : '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">Belum ada user di Supabase</td></tr>';
+                }).catch(function () {
+                    renderAdminUserTableLocal();
+                    showToast('Gagal memuat user dari server — tampil lokal', 'warning');
+                });
+            }
+
+            function renderAdminUserTableLocal() {
+                if (!adminUserTableBody) return;
                 const users = getUsers();
+                adminUsersCache = users.map(function (u) {
+                    return {
+                        username: u.username,
+                        hasPassword: !!(u.passwordHash || u.password),
+                        isAdmin: !!u.isAdmin,
+                        maxDevices: u.maxDevices,
+                        expiryDate: u.expiryDate || null,
+                        isActive: true,
+                        deviceCount: getDevicesForUser(u.username).length,
+                        source: u._source || 'local'
+                    };
+                });
                 const rows = [];
-                users.forEach(function (u, idx) {
+                users.forEach(function (u) {
                     const isAdminAcc = !!u.isAdmin;
                     const devices = getDevicesForUser(u.username);
                     const maxDev = u.maxDevices == null ? '∞' : String(u.maxDevices);
                     const srcBadge = isAdminAcc
                         ? '<span class="admin-badge admin">ADMIN</span>'
-                        : (u._source === 'hardcoded'
-                            ? '<span class="admin-badge hardcoded">hardcoded</span>'
-                            : '<span class="admin-badge managed">managed</span>');
+                        : '<span class="admin-badge managed">local</span>';
                     const expiryStr = u.expiryDate ? escapeHtml(String(u.expiryDate)) : '—';
                     let actions = '';
                     if (isAdminAcc) {
                         actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
                     } else {
-                        actions = '<div class="admin-actions">';
-                        if (u._source === 'managed') {
-                            actions += '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>';
-                        }
-                        // Tombol Hapus di SETIAP akun (kecuali admin)
-                        actions += '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>';
-                        actions += '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>';
-                        actions += '</div>';
+                        actions = '<div class="admin-actions">' +
+                            '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>' +
+                            '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>' +
+                            '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>' +
+                            '</div>';
                     }
                     rows.push(
                         '<tr>' +
                         '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +
-                        '<td class="pwd-mask" title="Password disimpan sebagai hash (tidak ditampilkan)">' + escapeHtml(maskPassword(u)) + '</td>' +
+                        '<td class="pwd-mask">' + escapeHtml(maskPassword(u)) + '</td>' +
                         '<td>' + escapeHtml(maxDev) + '</td>' +
                         '<td>' + devices.length + (u.maxDevices != null ? ' / ' + u.maxDevices : '') + '</td>' +
                         '<td>' + expiryStr + '</td>' +
@@ -1436,11 +1534,13 @@
             }
 
             function fillAdminFormForEdit(username) {
-                const u = getUserByUsername(username);
+                const u = (adminUsersCache || []).find(function (r) {
+                    return String(r.username || '').toLowerCase() === String(username || '').toLowerCase();
+                }) || getUserByUsername(username);
                 if (!u || u.isAdmin) return;
                 if (adminUsername) {
                     adminUsername.value = u.username;
-                    adminUsername.disabled = true; // username tidak diubah saat edit
+                    adminUsername.disabled = true;
                 }
                 if (adminPassword) {
                     adminPassword.value = '';
@@ -1448,7 +1548,7 @@
                 }
                 if (adminMaxDevices) adminMaxDevices.value = u.maxDevices == null ? '' : u.maxDevices;
                 if (adminExpiry) adminExpiry.value = u.expiryDate || '';
-                if (adminEditIndex) adminEditIndex.value = u.username; // pakai username sebagai key
+                if (adminEditIndex) adminEditIndex.value = u.username;
                 if (adminSaveBtn) adminSaveBtn.textContent = 'Update User';
                 if (adminCancelEditBtn) adminCancelEditBtn.style.display = '';
                 showAdminFormError('');
@@ -1477,81 +1577,44 @@
                         showAdminFormError('Username wajib diisi (1–64 karakter).');
                         return;
                     }
-                    // Password wajib hanya saat create; saat edit boleh kosong (= tidak ubah)
                     if (!isEdit && (!pass || pass.length < 1 || pass.length > 128)) {
                         showAdminFormError('Password wajib diisi (1–128 karakter).');
                         return;
                     }
-                    if (pass && (pass.length < 1 || pass.length > 128)) {
+                    if (pass && pass.length > 128) {
                         showAdminFormError('Password 1–128 karakter.');
                         return;
                     }
 
-                    // Jangan izinkan membuat/edit jadi admin
-                    const existing = getUserByUsername(uname);
-                    if (existing && existing.isAdmin) {
-                        showAdminFormError('Tidak bisa mengubah akun admin khusus.');
-                        return;
-                    }
+                    if (adminSaveBtn) adminSaveBtn.disabled = true;
 
-                    const managed = readManagedUsers();
-                    const hard = getHardcodedUsers();
-                    const hardNames = {};
-                    hard.forEach(function (r) { hardNames[r.username.toLowerCase()] = r; });
-
-                    // Hanya managed users yang bisa di-edit/tambah/hapus lewat panel.
-                    // User hardcoded ubah lewat credentials.js. Reset Device tetap tersedia untuk semua.
-
-                    function finishSave(passwordHashOrNull) {
-                        if (isEdit) {
-                            const idx = managed.findIndex(function (r) {
-                                return r.username.toLowerCase() === editKey.toLowerCase();
-                            });
-                            if (idx < 0) {
-                                showAdminFormError('User hardcoded hanya bisa diubah lewat credentials.js. Panel ini untuk user managed.');
-                                return;
-                            }
-                            if (passwordHashOrNull) {
-                                managed[idx].passwordHash = passwordHashOrNull;
-                                delete managed[idx].password; // remove legacy plaintext
-                            }
-                            managed[idx].maxDevices = maxDev;
-                            managed[idx].expiryDate = exp;
-                            writeManagedUsers(managed);
-                            unmarkUserDeleted(uname);
-                            showToast('✅ User diperbarui', 'success');
-                        } else {
-                            if (hardNames[uname.toLowerCase()] || managed.some(function (r) {
-                                return r.username.toLowerCase() === uname.toLowerCase();
-                            })) {
-                                showAdminFormError('Username sudah dipakai.');
-                                return;
-                            }
-                            managed.push({
-                                username: uname,
-                                passwordHash: passwordHashOrNull,
-                                maxDevices: maxDev,
-                                expiryDate: exp
-                            });
-                            writeManagedUsers(managed);
-                            unmarkUserDeleted(uname);
-                            showToast('✅ User baru ditambahkan', 'success');
+                    adminApi('/api/admin/users', {
+                        method: 'POST',
+                        body: {
+                            username: uname,
+                            password: pass || undefined,
+                            maxDevices: maxDev,
+                            expiryDate: exp,
+                            isEdit: isEdit
                         }
+                    }).then(function (data) {
+                        if (adminSaveBtn) adminSaveBtn.disabled = false;
+                        if (data.unauthorized) {
+                            showAdminFormError(data.message || 'Sesi berakhir. Login ulang.');
+                            return;
+                        }
+                        if (!data.ok) {
+                            showAdminFormError(data.message || 'Gagal menyimpan user.');
+                            return;
+                        }
+                        showToast(isEdit ? '✅ User diperbarui di Supabase' : '✅ User baru ditambahkan ke Supabase', 'success');
                         resetAdminForm();
                         if (adminPassword) adminPassword.placeholder = 'Masukkan password';
                         renderAdminUserTable();
-                    }
-
-                    if (pass) {
-                        hashPasswordStrong(pass).then(function (h) {
-                            finishSave(h);
-                        }).catch(function () {
-                            showAdminFormError('Gagal meng-hash password.');
-                        });
-                    } else {
-                        // edit tanpa ganti password
-                        finishSave(null);
-                    }
+                    }).catch(function () {
+                        if (adminSaveBtn) adminSaveBtn.disabled = false;
+                        showAdminFormError('Gagal menghubungi server. Coba lagi.');
+                    });
                 });
             }
 
@@ -1566,42 +1629,57 @@
                     if (action === 'edit') {
                         fillAdminFormForEdit(uname);
                     } else if (action === 'reset-device') {
-                        if (confirm('Reset semua device untuk user "' + uname + '"?\nSetelah reset, user bisa login lagi dari device baru (sampai batas max).')) {
-                            resetDevicesForUser(uname);
-                            renderAdminUserTable();
+                        if (!confirm('Reset semua device untuk user "' + uname + '"?\nSetelah reset, user bisa login lagi dari device baru (sampai batas max).')) return;
+                        btn.disabled = true;
+                        adminApi('/api/admin/reset-device', {
+                            method: 'POST',
+                            body: { username: uname }
+                        }).then(function (data) {
+                            btn.disabled = false;
+                            if (data.unauthorized) {
+                                showToast(data.message || 'Login ulang sebagai admin', 'error');
+                                return;
+                            }
+                            if (!data.ok) {
+                                showToast(data.message || 'Gagal reset device', 'error');
+                                return;
+                            }
                             showToast('Device di-reset untuk ' + uname, 'success');
-                        }
-                    } else if (action === 'delete') {
-                        const u = getUserByUsername(uname);
-                        if (!u || u.isAdmin) {
-                            showToast('Akun admin tidak bisa dihapus', 'error');
-                            return;
-                        }
-                        const srcNote = u._source === 'hardcoded'
-                            ? '\n\nCatatan: user ini dari credentials.js. Hapus di panel hanya menonaktifkan di browser ini (blocklist lokal).'
-                            : '\n\nUser managed akan dihapus dari localStorage.';
-                        if (confirm(
-                            'Hapus akun ini?\n\n' +
-                            'Username: ' + uname + '\n' +
-                            'Password: ' + maskPassword(u) + '\n' +
-                            'Sumber: ' + (u._source || '-') +
-                            srcNote +
-                            '\n\nDevice registry juga di-reset.'
-                        )) {
-                            // Hapus dari managed jika ada
-                            const managed = readManagedUsers().filter(function (r) {
-                                return r.username.toLowerCase() !== uname.toLowerCase();
-                            });
-                            writeManagedUsers(managed);
-                            // Blocklist agar hardcoded juga tidak muncul / tidak bisa login di browser ini
-                            markUserDeleted(uname);
-                            resetDevicesForUser(uname);
                             renderAdminUserTable();
-                            showToast('🗑️ Akun "' + uname + '" dihapus', 'info');
+                        }).catch(function () {
+                            btn.disabled = false;
+                            showToast('Gagal menghubungi server', 'error');
+                        });
+                    } else if (action === 'delete') {
+                        if (!confirm(
+                            'Hapus akun ini dari Supabase?\n\n' +
+                            'Username: ' + uname + '\n\n' +
+                            'Akun akan dinonaktifkan dan device registry dihapus.\n' +
+                            'User tidak bisa login lagi.'
+                        )) return;
+                        btn.disabled = true;
+                        adminApi('/api/admin/delete-user', {
+                            method: 'POST',
+                            body: { username: uname }
+                        }).then(function (data) {
+                            btn.disabled = false;
+                            if (data.unauthorized) {
+                                showToast(data.message || 'Login ulang sebagai admin', 'error');
+                                return;
+                            }
+                            if (!data.ok) {
+                                showToast(data.message || 'Gagal menghapus user', 'error');
+                                return;
+                            }
+                            showToast('🗑️ Akun "' + uname + '" dihapus dari Supabase', 'info');
                             if (adminEditIndex && String(adminEditIndex.value).toLowerCase() === uname.toLowerCase()) {
                                 resetAdminForm();
                             }
-                        }
+                            renderAdminUserTable();
+                        }).catch(function () {
+                            btn.disabled = false;
+                            showToast('Gagal menghubungi server', 'error');
+                        });
                     }
                 });
             }
@@ -1615,30 +1693,49 @@
                 });
             }
 
-            // Hapus semua akun non-admin (tombol di header daftar)
+            // Hapus semua akun non-admin di Supabase
             const adminDeleteAllManagedBtn = document.getElementById('adminDeleteAllManagedBtn');
             if (adminDeleteAllManagedBtn) {
                 adminDeleteAllManagedBtn.addEventListener('click', function () {
-                    const all = getUsers().filter(function (u) { return !u.isAdmin; });
+                    const all = (adminUsersCache || []).filter(function (u) {
+                        return !u.isAdmin && u.isActive !== false;
+                    });
                     if (!all.length) {
                         showToast('Tidak ada akun non-admin untuk dihapus', 'warning');
                         return;
                     }
                     if (!confirm(
-                        'Hapus SEMUA akun (kecuali admin)?\n\n' +
+                        'Hapus SEMUA akun non-admin dari Supabase?\n\n' +
                         'Jumlah: ' + all.length + ' akun\n' +
-                        '• Managed → dihapus dari localStorage\n' +
-                        '• Hardcoded → dinonaktifkan di browser ini (blocklist)\n\n' +
-                        'Tindakan ini tidak bisa dibatalkan (kecuali clear localStorage).'
+                        'Akun akan dinonaktifkan + device di-reset.\n\n' +
+                        'Tindakan ini tidak bisa dibatalkan dari panel.'
                     )) return;
-                    all.forEach(function (r) {
-                        markUserDeleted(r.username);
-                        resetDevicesForUser(r.username);
-                    });
-                    writeManagedUsers([]);
-                    resetAdminForm();
-                    renderAdminUserTable();
-                    showToast('🗑️ ' + all.length + ' akun dihapus', 'info');
+
+                    adminDeleteAllManagedBtn.disabled = true;
+                    let done = 0;
+                    let failed = 0;
+
+                    function next(i) {
+                        if (i >= all.length) {
+                            adminDeleteAllManagedBtn.disabled = false;
+                            resetAdminForm();
+                            renderAdminUserTable();
+                            showToast('🗑️ Selesai: ' + done + ' dihapus' + (failed ? ', ' + failed + ' gagal' : ''), failed ? 'warning' : 'info');
+                            return;
+                        }
+                        adminApi('/api/admin/delete-user', {
+                            method: 'POST',
+                            body: { username: all[i].username }
+                        }).then(function (data) {
+                            if (data && data.ok) done++;
+                            else failed++;
+                            next(i + 1);
+                        }).catch(function () {
+                            failed++;
+                            next(i + 1);
+                        });
+                    }
+                    next(0);
                 });
             }
 
