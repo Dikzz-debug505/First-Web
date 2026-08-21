@@ -1192,9 +1192,10 @@
                 currentSessionUser = null;
                 currentIsAdmin = false;
                 if (loginPass) loginPass.value = '';
-                if (loginUser) {
-                    loginUser.value = '';
-                    setTimeout(function () { loginUser.focus(); }, 60);
+                if (loginUser) loginUser.value = '';
+                // Reset lampu (user harus tarik tali lagi)
+                if (window.MLBB_loginLamp && typeof window.MLBB_loginLamp.reset === 'function') {
+                    window.MLBB_loginLamp.reset();
                 }
                 // Refresh banner maintenance saat kembali ke login
                 fetchMaintenanceStatus().then(function (on) {

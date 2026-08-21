@@ -24,6 +24,7 @@
       'login.err.maintenance': '🔧 Website sedang diupdate. User biasa tidak bisa login. Coba lagi nanti.',
       'login.maint.title': 'Website sedang diupdate',
       'login.maint.desc': 'User biasa tidak dapat login saat ini. Silakan coba lagi nanti. (Admin tetap bisa masuk)',
+      'login.lamp_hint': 'Tarik tali lampu untuk menyalakan & membuka form login',
 
       'header.subtitle': 'Hero.bytes Viewer, Document Extractor & GameObject Overrider — Export/Import & Patch',
       'header.logout': 'Keluar',
@@ -231,6 +232,7 @@
       'login.err.maintenance': '🔧 Website is being updated. Regular users cannot sign in. Please try again later.',
       'login.maint.title': 'Website is being updated',
       'login.maint.desc': 'Regular users cannot sign in right now. Please try again later. (Admin can still sign in)',
+      'login.lamp_hint': 'Pull the lamp cord to turn on the light and open the login form',
 
       'header.subtitle': 'Hero.bytes Viewer, Document Extractor & GameObject Overrider — Export/Import & Patch',
       'header.logout': 'Log out',
