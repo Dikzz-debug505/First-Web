@@ -861,6 +861,7 @@
                         ok: false,
                         expired: !!data.expired,
                         maxDevices: !!data.maxDevices,
+                        maintenance: !!data.maintenance,
                         current: data.current,
                         max: data.max,
                         message: data.message || null,
@@ -1005,6 +1006,100 @@
                 return data;
             }
 
+            let currentMaintenanceMode = false;
+
+            function updateMaintenanceBanner(on) {
+                currentMaintenanceMode = !!on;
+                const banner = document.getElementById('maintenanceBanner');
+                if (banner) banner.style.display = on ? 'flex' : 'none';
+            }
+
+            async function fetchMaintenanceStatus() {
+                try {
+                    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                    const timer = controller ? setTimeout(function () { controller.abort(); }, 8000) : null;
+                    const res = await fetch('/api/maintenance', {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        signal: controller ? controller.signal : undefined
+                    });
+                    if (timer) clearTimeout(timer);
+                    if (!res.ok) return false;
+                    const data = await res.json();
+                    return !!(data && data.ok && data.maintenance);
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function setAdminMaintUI(on) {
+                currentMaintenanceMode = !!on;
+                const statusEl = document.getElementById('adminMaintStatus');
+                const onBtn = document.getElementById('adminMaintOnBtn');
+                const offBtn = document.getElementById('adminMaintOffBtn');
+                const _t = window.MLBB_i18n && MLBB_i18n.t;
+                if (statusEl) {
+                    statusEl.textContent = on
+                        ? (_t ? _t('admin.maint.on') : 'ON')
+                        : (_t ? _t('admin.maint.off') : 'OFF');
+                    statusEl.classList.toggle('is-on', !!on);
+                }
+                if (onBtn) onBtn.classList.toggle('is-active', !!on);
+                if (offBtn) offBtn.classList.toggle('is-active', !on);
+            }
+
+            async function loadAdminMaintenanceStatus() {
+                const data = await adminApi('/api/admin/maintenance');
+                if (data && data.ok) {
+                    setAdminMaintUI(!!data.maintenance);
+                    return !!data.maintenance;
+                }
+                return false;
+            }
+
+            async function setMaintenanceMode(enabled) {
+                const errEl = document.getElementById('adminMaintError');
+                if (errEl) {
+                    errEl.style.display = 'none';
+                    errEl.textContent = '';
+                }
+                const onBtn = document.getElementById('adminMaintOnBtn');
+                const offBtn = document.getElementById('adminMaintOffBtn');
+                if (onBtn) onBtn.disabled = true;
+                if (offBtn) offBtn.disabled = true;
+
+                const data = await adminApi('/api/admin/maintenance', {
+                    method: 'POST',
+                    body: { enabled: !!enabled }
+                });
+
+                if (onBtn) onBtn.disabled = false;
+                if (offBtn) offBtn.disabled = false;
+
+                if (data && data.unauthorized) {
+                    showToast(data.message || 'Sesi admin berakhir', 'error');
+                    doLogout();
+                    return;
+                }
+                if (!data || !data.ok) {
+                    if (errEl) {
+                        errEl.textContent = (data && data.message) || 'Gagal mengubah mode update';
+                        errEl.style.display = 'block';
+                    }
+                    return;
+                }
+
+                setAdminMaintUI(!!data.maintenance);
+                updateMaintenanceBanner(!!data.maintenance);
+                const _t = window.MLBB_i18n && MLBB_i18n.t;
+                showToast(
+                    data.maintenance
+                        ? (_t ? _t('admin.maint.toast_on') : 'Mode update website AKTIF')
+                        : (_t ? _t('admin.maint.toast_off') : 'Mode update website NONAKTIF'),
+                    data.maintenance ? 'warning' : 'success'
+                );
+            }
+
             function setFormDisabled(disabled) {
                 if (loginUser) loginUser.disabled = disabled;
                 if (loginPass) loginPass.disabled = disabled;
@@ -1062,6 +1157,7 @@
                 }
                 if (typeof window.MLBB_showMusicFloat === 'function') window.MLBB_showMusicFloat();
                 renderAdminUserTable();
+                loadAdminMaintenanceStatus();
             }
 
             function hideLoginOverlaySmooth(callback) {
@@ -1100,6 +1196,10 @@
                     loginUser.value = '';
                     setTimeout(function () { loginUser.focus(); }, 60);
                 }
+                // Refresh banner maintenance saat kembali ke login
+                fetchMaintenanceStatus().then(function (on) {
+                    updateMaintenanceBanner(on);
+                });
             }
 
             function attemptLogin(username, password) {
@@ -1126,8 +1226,13 @@
 
                 validateCredentials(username, password).then(function (result) {
                     if (!result.ok) {
-                        const failState = registerFailedAttempt();
-                        const delay = FAIL_DELAY_BASE_MS + Math.min(failState.count, 5) * 250;
+                        // Maintenance bukan percobaan gagal password — jangan hitung rate-limit
+                        const isMaint = !!result.maintenance;
+                        if (!isMaint) registerFailedAttempt();
+                        const failState = readFailState();
+                        const delay = isMaint
+                            ? 400
+                            : (FAIL_DELAY_BASE_MS + Math.min(failState.count, 5) * 250);
 
                         setTimeout(function () {
                             hideSpinner();
@@ -1136,7 +1241,12 @@
 
                             if (loginError) {
                                 const _t = window.MLBB_i18n && MLBB_i18n.t;
-                                if (result.expired) {
+                                if (result.maintenance) {
+                                    loginError.textContent = _t
+                                        ? _t('login.err.maintenance')
+                                        : '🔧 Website sedang diupdate. User biasa tidak bisa login. Coba lagi nanti.';
+                                    updateMaintenanceBanner(true);
+                                } else if (result.expired) {
                                     loginError.textContent = _t ? _t('login.err.expired') : '❌ Akun sudah kedaluarsa.';
                                 } else if (result.maxDevices) {
                                     loginError.textContent = _t
@@ -1204,23 +1314,34 @@
                         showAdminApp(sess.u);
                         return;
                     }
-                    const user = getUserByUsername(sess.u);
-                    if (user && user.expiryDate) {
-                        const expDate = new Date(String(user.expiryDate));
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        if (!isNaN(expDate.getTime()) && today > expDate) {
+                    // Non-admin: cek maintenance — jika ON, paksa logout ke layar login
+                    fetchMaintenanceStatus().then(function (on) {
+                        if (on) {
                             clearSession();
                             showLoginScreen();
+                            updateMaintenanceBanner(true);
                             return;
                         }
-                    }
-                    // User Supabase non-admin: tetap izinkan sesi (expiry sudah dicek saat login)
-                    if (user || sess.token) {
-                        showMainApp(sess.u);
-                        return;
-                    }
-                    clearSession();
+                        const user = getUserByUsername(sess.u);
+                        if (user && user.expiryDate) {
+                            const expDate = new Date(String(user.expiryDate));
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (!isNaN(expDate.getTime()) && today > expDate) {
+                                clearSession();
+                                showLoginScreen();
+                                return;
+                            }
+                        }
+                        // User Supabase non-admin: tetap izinkan sesi (expiry sudah dicek saat login)
+                        if (user || sess.token) {
+                            showMainApp(sess.u);
+                            return;
+                        }
+                        clearSession();
+                        showLoginScreen();
+                    });
+                    return;
                 }
                 const users = getUsers();
                 if (users.length === 0 && !sess) {
@@ -1228,6 +1349,23 @@
                     // (Supabase bisa punya user meski credentials.js kosong)
                 }
                 showLoginScreen();
+            })();
+
+            (function initMaintenanceButtons() {
+                const onBtn = document.getElementById('adminMaintOnBtn');
+                const offBtn = document.getElementById('adminMaintOffBtn');
+                if (onBtn) {
+                    onBtn.addEventListener('click', function () {
+                        if (!currentIsAdmin) return;
+                        setMaintenanceMode(true);
+                    });
+                }
+                if (offBtn) {
+                    offBtn.addEventListener('click', function () {
+                        if (!currentIsAdmin) return;
+                        setMaintenanceMode(false);
+                    });
+                }
             })();
 
             if (loginForm) {

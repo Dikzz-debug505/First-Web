@@ -786,6 +786,34 @@ body::before {
     margin-bottom: 12px;
 }
 
+.maintenance-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: #fbbf24;
+}
+.maintenance-banner-icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.maintenance-banner-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.maintenance-banner-body strong {
+    font-size: 13px;
+    color: #fcd34d;
+}
+
 .login-btn {
     width: 100%;
     margin-top: 6px;
@@ -1319,6 +1347,47 @@ body.side-menu-open {
 .admin-card-header-row h2 {
     margin-bottom: 0;
 }
+
+.admin-maintenance-card {
+    border: 1px solid rgba(251, 191, 36, 0.25);
+}
+.admin-maint-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--text-secondary);
+}
+.admin-maint-status.is-on {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+}
+.admin-maint-toggle-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+.btn-maint-off,
+.btn-maint-on {
+    min-width: 120px;
+}
+.btn-maint-off.is-active {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #4ade80;
+}
+.btn-maint-on.is-active {
+    background: rgba(251, 191, 36, 0.25);
+    border-color: rgba(251, 191, 36, 0.55);
+    color: #fbbf24;
+}
+
 .pwd-mask {
     font-family: var(--mono);
     letter-spacing: 0.1em;

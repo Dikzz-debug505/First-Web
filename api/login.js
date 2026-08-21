@@ -207,6 +207,29 @@ module.exports = async function handler(req, res) {
   const uname = String(row.username);
   const isAdmin = !!row.is_admin;
 
+  // Maintenance mode: block non-admin login (admin tetap bisa masuk)
+  if (!isAdmin) {
+    try {
+      const { data: maintRows } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .limit(1);
+      const maintOn =
+        maintRows &&
+        maintRows[0] &&
+        String(maintRows[0].value || '').toLowerCase() === 'true';
+      if (maintOn) {
+        return failResponse(res, 'Website sedang diupdate. Silakan coba lagi nanti.', {
+          maintenance: true
+        });
+      }
+    } catch (e) {
+      // Jika settings gagal dibaca, jangan blokir login
+      console.error('login maintenance check');
+    }
+  }
+
   // Device limit (skip admin)
   if (!isAdmin) {
     const maxRaw = row.max_devices;

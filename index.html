@@ -8,7 +8,7 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
-    <link rel="stylesheet" href="style.css?v=202608210750">
+    <link rel="stylesheet" href="style.css?v=202608211430">
 </head>
 <body>
 
@@ -22,6 +22,13 @@
                 <div class="login-icon">🔐</div>
                 <h1>MLBB Unity Tools</h1>
                 <p data-i18n="login.subtitle">Masuk untuk mengakses tools</p>
+            </div>
+            <div class="maintenance-banner" id="maintenanceBanner" style="display:none;" role="alert">
+                <div class="maintenance-banner-icon">🔧</div>
+                <div class="maintenance-banner-body">
+                    <strong data-i18n="login.maint.title">Website sedang diupdate</strong>
+                    <span data-i18n="login.maint.desc">User biasa tidak dapat login saat ini. Silakan coba lagi nanti.</span>
+                </div>
             </div>
             <div class="lang-switch" id="loginLangSwitch">
                 <button type="button" class="lang-btn" data-lang-btn="id" title="Indonesia">ID</button>
@@ -365,6 +372,19 @@
         </div>
 
         <div class="admin-section">
+            <div class="admin-card admin-maintenance-card">
+                <div class="admin-card-header-row">
+                    <h2 data-i18n="admin.maint.title">🔧 Mode Update Website</h2>
+                    <span class="admin-maint-status" id="adminMaintStatus" data-i18n="admin.maint.off">OFF</span>
+                </div>
+                <p class="admin-hint" data-i18n="admin.maint.hint">Aktifkan untuk menampilkan peringatan update dan memblokir login user biasa. Admin tetap bisa login.</p>
+                <div class="admin-maint-toggle-row">
+                    <button type="button" class="btn btn-maint-off" id="adminMaintOffBtn" data-i18n="admin.maint.btn_off">OFF — Normal</button>
+                    <button type="button" class="btn btn-maint-on" id="adminMaintOnBtn" data-i18n="admin.maint.btn_on">ON — Update</button>
+                </div>
+                <div class="login-error" id="adminMaintError" style="display:none; margin-top:10px;"></div>
+            </div>
+
             <div class="admin-card">
                 <h2 data-i18n="admin.add">➕ Tambah / Edit User</h2>
                 <form id="adminUserForm" autocomplete="off">
@@ -505,8 +525,8 @@
         </button>
     </div>
 
-    <script src="i18n.js?v=202608201605"></script>
+    <script src="i18n.js?v=202608211430"></script>
     <script src="credentials.js?v=202608201605"></script>
-    <script src="app.js?v=202608210750" defer></script>
+    <script src="app.js?v=202608211430" defer></script>
 </body>
 </html>

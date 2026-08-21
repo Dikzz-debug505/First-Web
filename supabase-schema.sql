@@ -56,3 +56,16 @@ on conflict (username) do update set
   expiry_date = excluded.expiry_date,
   is_active = excluded.is_active,
   updated_at = now();
+
+-- 5) Settings (maintenance / update website mode)
+create table if not exists public.app_settings (
+  key text primary key,
+  value text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.app_settings enable row level security;
+
+insert into public.app_settings (key, value, updated_at)
+values ('maintenance_mode', 'false', now())
+on conflict (key) do nothing;
