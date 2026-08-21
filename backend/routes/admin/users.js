@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
 
     const { data: devices, error: devErr } = await supabase
       .from('user_devices')
-      .select('username, device_id');
+      .select('username, device_id, last_ip, last_seen');
 
     if (devErr) {
       console.error('admin list devices', devErr);
@@ -46,9 +46,18 @@ module.exports = async function handler(req, res) {
     }
 
     const deviceCount = {};
+    const lastIpByUser = {};
+    const lastSeenByUser = {};
     (devices || []).forEach(function (d) {
       const u = String(d.username || '');
       deviceCount[u] = (deviceCount[u] || 0) + 1;
+      const ip = d.last_ip ? String(d.last_ip).trim() : '';
+      if (!ip) return;
+      const seen = d.last_seen ? new Date(d.last_seen).getTime() : 0;
+      if (!lastIpByUser[u] || seen >= (lastSeenByUser[u] || 0)) {
+        lastIpByUser[u] = ip;
+        lastSeenByUser[u] = seen;
+      }
     });
 
     const list = (users || []).map(function (u) {
@@ -60,6 +69,7 @@ module.exports = async function handler(req, res) {
         expiryDate: u.expiry_date || null,
         isActive: !!u.is_active,
         deviceCount: deviceCount[u.username] || 0,
+        lastIp: lastIpByUser[u.username] || null,
         source: 'supabase'
       };
     });

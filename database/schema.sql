@@ -69,3 +69,7 @@ alter table public.app_settings enable row level security;
 insert into public.app_settings (key, value, updated_at)
 values ('maintenance_mode', 'false', now())
 on conflict (key) do nothing;
+
+-- 6) IP address per device (untuk admin melihat IP HP user)
+alter table public.user_devices
+  add column if not exists last_ip text null;

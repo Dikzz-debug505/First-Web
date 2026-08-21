@@ -1554,12 +1554,12 @@
 
             function renderAdminUserTable() {
                 if (!adminUserTableBody) return;
-                adminUserTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">' +
+                adminUserTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#8a8d93;">' +
                     ((window.MLBB_i18n && MLBB_i18n.t('admin.loading')) || 'Memuat dari Supabase…') + '</td></tr>';
 
                 adminApi('/api/admin/users').then(function (data) {
                     if (data.unauthorized) {
-                        adminUserTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff6b7a;">Sesi berakhir — login ulang sebagai admin</td></tr>';
+                        adminUserTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff6b7a;">Sesi berakhir — login ulang sebagai admin</td></tr>';
                         showToast(data.message || 'Login ulang sebagai admin', 'error');
                         return;
                     }
@@ -1591,12 +1591,16 @@
                                 '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.reset_device') : 'Reset Device') + '</button>' +
                                 '</div>';
                         }
+                        const ipStr = u.lastIp
+                            ? '<code class="admin-ip" title="IP terakhir saat login">' + escapeHtml(String(u.lastIp)) + '</code>'
+                            : '<span style="color:#8a8d93;">—</span>';
                         rows.push(
                             '<tr>' +
                             '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +
                             '<td class="pwd-mask" title="Password hash">' + escapeHtml(maskPassword(u)) + '</td>' +
                             '<td>' + escapeHtml(maxDev) + '</td>' +
                             '<td>' + devCount + (u.maxDevices != null ? ' / ' + u.maxDevices : '') + '</td>' +
+                            '<td>' + ipStr + '</td>' +
                             '<td>' + expiryStr + '</td>' +
                             '<td>' + srcBadge + '</td>' +
                             '<td>' + actions + '</td>' +
@@ -1605,7 +1609,7 @@
                     });
                     adminUserTableBody.innerHTML = rows.length
                         ? rows.join('')
-                        : '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">' +
+                        : '<tr><td colspan="8" style="text-align:center;color:#8a8d93;">' +
                           ((window.MLBB_i18n && MLBB_i18n.t('admin.empty')) || 'Belum ada user di Supabase') + '</td></tr>';
                 }).catch(function () {
                     renderAdminUserTableLocal();
@@ -1653,13 +1657,14 @@
                         '<td class="pwd-mask">' + escapeHtml(maskPassword(u)) + '</td>' +
                         '<td>' + escapeHtml(maxDev) + '</td>' +
                         '<td>' + devices.length + (u.maxDevices != null ? ' / ' + u.maxDevices : '') + '</td>' +
-                        '<td>' + expiryStr + '</td>' +
+                        '<td><span style="color:#8a8d93;">—</span></td>' +
+                            '<td>' + expiryStr + '</td>' +
                         '<td>' + srcBadge + '</td>' +
                         '<td>' + actions + '</td>' +
                         '</tr>'
                     );
                 });
-                adminUserTableBody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" style="text-align:center;color:#8a8d93;">Belum ada user</td></tr>';
+                adminUserTableBody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="8" style="text-align:center;color:#8a8d93;">Belum ada user</td></tr>';
             }
 
             function showAdminFormError(msg) {

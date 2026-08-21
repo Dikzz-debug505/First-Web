@@ -260,7 +260,7 @@ module.exports = async function handler(req, res) {
     if (already) {
       await supabase
         .from('user_devices')
-        .update({ last_seen: new Date().toISOString() })
+        .update({ last_seen: new Date().toISOString(), last_ip: ip })
         .eq('username', uname)
         .eq('device_id', deviceId);
     } else {
@@ -268,7 +268,8 @@ module.exports = async function handler(req, res) {
         username: uname,
         device_id: deviceId,
         first_seen: new Date().toISOString(),
-        last_seen: new Date().toISOString()
+        last_seen: new Date().toISOString(),
+        last_ip: ip
       });
       if (insErr && insErr.code !== '23505') {
         console.error('supabase insert device');

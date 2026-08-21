@@ -8,7 +8,7 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
-    <link rel="stylesheet" href="css/style.css?v=202608211500">
+    <link rel="stylesheet" href="css/style.css?v=202608211700">
 </head>
 <body>
 
@@ -17,105 +17,43 @@
             <span class="login-secure-dot"></span>
             <span class="login-secure-label" data-i18n="login.secure">SECURE</span>
         </span>
-
-        <div class="login-scene" id="loginScene">
-            <!-- Interactive lamp -->
-            <svg class="lamp" viewBox="0 0 333 484" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <ellipse class="fill-opening" cx="165" cy="220" rx="130" ry="20" />
-                <ellipse cx="165" cy="220" rx="130" ry="20" fill="url(#grad-opening)" style="opacity:calc(1 - var(--lamp-on))" />
-                <path class="fill-base-side"
-                    d="M165 464c44.183 0 80-8.954 80-20v-14h-22.869c-14.519-3.703-34.752-6-57.131-6-22.379 0-42.612 2.297-57.131 6H85v14c0 11.046 35.817 20 80 20z" />
-                <path
-                    d="M165 464c44.183 0 80-8.954 80-20v-14h-22.869c-14.519-3.703-34.752-6-57.131-6-22.379 0-42.612 2.297-57.131 6H85v14c0 11.046 35.817 20 80 20z"
-                    fill="url(#grad-side)" />
-                <ellipse class="fill-base-top" cx="165" cy="430" rx="80" ry="20" />
-                <ellipse cx="165" cy="430" rx="80" ry="20" fill="url(#grad-base)" />
-                <path class="fill-post" d="M180 142h-30v286c0 3.866 6.716 7 15 7 8.284 0 15-3.134 15-7V142z" />
-                <path d="M180 142h-30v286c0 3.866 6.716 7 15 7 8.284 0 15-3.134 15-7V142z" fill="url(#grad-post)" />
-                <path id="js-cord" class="lamp-cord" d="M124 190 L124 348" stroke-width="6" stroke-linecap="round" />
-                <path class="lamp-light" d="M290.5 193H39L0 463.5c0 11.046 75.478 20 165.5 20s167-11.954 167-23l-42-267.5z"
-                    fill="url(#grad-light)" />
-                <path class="fill-shade" fill-rule="evenodd" clip-rule="evenodd"
-                    d="M164.859 0c55.229 0 100 8.954 100 20l29.859 199.06C291.529 208.451 234.609 200 164.859 200S38.189 208.451 35 219.06L64.859 20c0-11.046 44.772-20 100-20z" />
-                <path fill-rule="evenodd" clip-rule="evenodd"
-                    d="M164.859 0c55.229 0 100 8.954 100 20l29.859 199.06C291.529 208.451 234.609 200 164.859 200S38.189 208.451 35 219.06L64.859 20c0-11.046 44.772-20 100-20z"
-                    fill="url(#grad-shade)" />
-                <defs>
-                    <linearGradient id="grad-opening" x1="35" y1="220" x2="295" y2="220" gradientUnits="userSpaceOnUse">
-                        <stop /><stop offset="1" stop-opacity="0" />
-                    </linearGradient>
-                    <linearGradient id="grad-base" x1="85" y1="444" x2="245" y2="444" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="var(--blend-a)" />
-                        <stop offset=".8" stop-color="var(--blend-b)" stop-opacity="0" />
-                    </linearGradient>
-                    <linearGradient id="grad-side" x1="119" y1="430" x2="245" y2="430" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="var(--blend-c)" />
-                        <stop offset="1" stop-color="var(--blend-b)" stop-opacity="0" />
-                    </linearGradient>
-                    <linearGradient id="grad-post" x1="150" y1="288" x2="180" y2="288" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="var(--blend-a)" />
-                        <stop offset="1" stop-color="var(--blend-b)" stop-opacity="0" />
-                    </linearGradient>
-                    <linearGradient id="grad-light" x1="165.5" y1="218.5" x2="165.5" y2="340" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="var(--glow-a)" stop-opacity=".10" />
-                        <stop offset="1" stop-color="var(--glow-a)" stop-opacity="0" />
-                    </linearGradient>
-                    <linearGradient id="grad-shade" x1="56" y1="110" x2="295" y2="110" gradientUnits="userSpaceOnUse">
-                        <stop stop-color="var(--shade-l)" stop-opacity=".8" />
-                        <stop offset="1" stop-color="var(--shade-m)" stop-opacity="0" />
-                    </linearGradient>
-                </defs>
-                <circle id="js-hit" class="lamp-hit" cx="124" cy="348" r="60" />
-            </svg>
-
-            <div class="login-card" id="js-card">
-                <div class="login-brand">
-                    <div class="login-icon">🔐</div>
-                    <h1>MLBB Unity Tools</h1>
-                    <p data-i18n="login.subtitle">Masuk untuk mengakses tools</p>
-                </div>
-                <div class="maintenance-banner" id="maintenanceBanner" style="display:none;" role="alert">
-                    <div class="maintenance-banner-icon">🔧</div>
-                    <div class="maintenance-banner-body">
-                        <strong data-i18n="login.maint.title">Website sedang diupdate</strong>
-                        <span data-i18n="login.maint.desc">User biasa tidak dapat login saat ini. Silakan coba lagi nanti.</span>
-                    </div>
-                </div>
-                <div class="lang-switch" id="loginLangSwitch">
-                    <button type="button" class="lang-btn" data-lang-btn="id" title="Indonesia">ID</button>
-                    <button type="button" class="lang-btn" data-lang-btn="en" title="English">EN</button>
-                </div>
-                <form id="loginForm" autocomplete="off">
-                    <div class="login-field">
-                        <label for="loginUser" data-i18n="login.username">Username</label>
-                        <div class="field-wrap">
-                            <span class="field-icon" aria-hidden="true">👤</span>
-                            <input type="text" id="loginUser" name="username" data-i18n-placeholder="login.user.placeholder" placeholder="Masukkan username" required autocomplete="username" maxlength="64" autocapitalize="off" spellcheck="false" />
-                        </div>
-                    </div>
-                    <div class="login-field">
-                        <label for="loginPass" data-i18n="login.password">Password</label>
-                        <div class="field-wrap">
-                            <span class="field-icon" aria-hidden="true">🔒</span>
-                            <input type="password" id="loginPass" name="password" data-i18n-placeholder="login.pass.placeholder" placeholder="Masukkan password" required autocomplete="current-password" maxlength="128" />
-                            <button class="field-toggle" id="js-toggle-pw" type="button" aria-label="Toggle password">👁</button>
-                        </div>
-                    </div>
-                    <div class="login-error" id="loginError" style="display:none;"></div>
-                    <button type="submit" class="btn btn-primary login-btn" id="loginSubmitBtn" data-i18n="login.submit">Masuk</button>
-                    <div class="login-spinner" id="loginSpinner" aria-live="polite" aria-busy="false">
-                        <div class="spinner" id="loginSpinnerIcon"></div>
-                        <p id="loginSpinnerText" data-i18n="login.processing">Memproses login...</p>
-                    </div>
-                </form>
-                <div class="login-note" data-i18n="login.note">
-                    Kredensial dan Security diatur sedemikian rupa agar terhindar dari kejahatan Cyber. Salam hangat dari Dev
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="login-icon">🔐</div>
+                <h1>MLBB Unity Tools</h1>
+                <p data-i18n="login.subtitle">Masuk untuk mengakses tools</p>
+            </div>
+            <div class="maintenance-banner" id="maintenanceBanner" style="display:none;" role="alert">
+                <div class="maintenance-banner-icon">🔧</div>
+                <div class="maintenance-banner-body">
+                    <strong data-i18n="login.maint.title">Website sedang diupdate</strong>
+                    <span data-i18n="login.maint.desc">User biasa tidak dapat login saat ini. Silakan coba lagi nanti.</span>
                 </div>
             </div>
+            <div class="lang-switch" id="loginLangSwitch">
+                <button type="button" class="lang-btn" data-lang-btn="id" title="Indonesia">ID</button>
+                <button type="button" class="lang-btn" data-lang-btn="en" title="English">EN</button>
+            </div>
+            <form id="loginForm" autocomplete="off">
+                <div class="login-field">
+                    <label for="loginUser" data-i18n="login.username">Username</label>
+                    <input type="text" id="loginUser" name="username" data-i18n-placeholder="login.user.placeholder" placeholder="Masukkan username" required autocomplete="username" maxlength="64" autocapitalize="off" spellcheck="false" />
+                </div>
+                <div class="login-field">
+                    <label for="loginPass" data-i18n="login.password">Password</label>
+                    <input type="password" id="loginPass" name="password" data-i18n-placeholder="login.pass.placeholder" placeholder="Masukkan password" required autocomplete="current-password" maxlength="128" />
+                </div>
+                <div class="login-error" id="loginError" style="display:none;"></div>
+                <button type="submit" class="btn btn-primary login-btn" id="loginSubmitBtn" data-i18n="login.submit">Masuk</button>
+                <div class="login-spinner" id="loginSpinner" aria-live="polite" aria-busy="false">
+                    <div class="spinner" id="loginSpinnerIcon"></div>
+                    <p id="loginSpinnerText" data-i18n="login.processing">Memproses login...</p>
+                </div>
+            </form>
+            <div class="login-note" data-i18n="login.note">
+                Kredensial dan Security diatur sedemikian rupa agar terhindar dari kejahatan Cyber. Salam hangat dari Dev
+            </div>
         </div>
-
-        <p class="login-lamp-hint" id="loginLampHint" data-i18n="login.lamp_hint">Tarik tali lampu untuk menyalakan &amp; membuka form login</p>
-        <audio id="lampClickAudio" src="assets/click-sound.mp3" preload="auto"></audio>
     </div>
 
     <div class="side-menu-backdrop" id="sideMenuBackdrop" hidden></div>
@@ -492,6 +430,7 @@
                                 <th data-i18n="admin.th.pass">Password</th>
                                 <th data-i18n="admin.th.max">Max Device</th>
                                 <th data-i18n="admin.th.active">Device Aktif</th>
+                                <th data-i18n="admin.th.ip">IP Address</th>
                                 <th data-i18n="admin.th.expiry">Expiry</th>
                                 <th data-i18n="admin.th.source">Sumber</th>
                                 <th data-i18n="admin.th.actions">Aksi</th>
@@ -587,9 +526,8 @@
         </button>
     </div>
 
-    <script src="js/i18n.js?v=202608211430"></script>
-    <script src="js/credentials.js?v=202608201605"></script>
-    <script src="js/login-lamp.js?v=202608211500"></script>
-    <script src="js/app.js?v=202608211500" defer></script>
+    <script src="js/i18n.js?v=202608211700"></script>
+    <script src="js/credentials.js?v=202608211700"></script>
+    <script src="js/app.js?v=202608211700" defer></script>
 </body>
 </html>
