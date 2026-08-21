@@ -68,8 +68,8 @@
 
             // Lagu 1 = bgm.mp3 | Lagu 2 = bgm2.mp3 (fallback ke bgm.mp3 jika belum ada)
             const BGM_TRACKS = {
-                '1': { name: 'Lagu 1', src: 'bgm.mp3', icon: '🎵' },
-                '2': { name: 'Lagu 2', src: 'bgm2.mp3', icon: '🎶', fallback: 'bgm.mp3' }
+                '1': { name: 'Lagu 1', src: 'assets/bgm.mp3', icon: '🎵' },
+                '2': { name: 'Lagu 2', src: 'assets/bgm2.mp3', icon: '🎶', fallback: 'assets/bgm.mp3' }
             };
 
             let bgmIsPlaying = false;
