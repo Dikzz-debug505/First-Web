@@ -1,23 +1,27 @@
 /**
  * Login lamp — pull-cord physics + light toggle
- * Reveals the login card when the lamp is switched on.
+ * CSS scoped under .login-overlay only (does not affect admin panel).
  */
 (function () {
   'use strict';
 
   const ROOT = document.documentElement;
+  const overlay = document.getElementById('loginOverlay');
   const card = document.getElementById('js-card');
   const cord = document.getElementById('js-cord');
   const hit = document.getElementById('js-hit');
-  const lampEl = document.querySelector('.lamp');
+  const lampEl = document.querySelector('.login-overlay .lamp');
   const hint = document.getElementById('loginLampHint');
   const audioEl = document.getElementById('lampClickAudio');
-  const overlay = document.getElementById('loginOverlay');
 
-  if (!cord || !hit || !lampEl || !card) return;
+  if (!cord || !hit || !lampEl || !card || !overlay) return;
 
-  // CSS variable for lamp colours (0 = off, 1 = on)
-  ROOT.style.setProperty('--lamp-on', '0');
+  // Prefer CSS var on overlay (scoped), also set on root for SVG calc
+  function setOn(v) {
+    overlay.style.setProperty('--lamp-on', v);
+    ROOT.style.setProperty('--lamp-on', v);
+  }
+  setOn('0');
 
   const AX = 124;
   const AY = 190;
@@ -81,7 +85,6 @@
     animating = true;
     const dur = triggered ? 380 : 500;
     const t0 = performance.now();
-
     function tick(now) {
       const t = Math.min((now - t0) / dur, 1);
       const fn = triggered ? easeElastic(t) : easeOutBounce(t);
@@ -108,7 +111,6 @@
     e.preventDefault();
     dragging = true;
   }
-
   function onMove(e) {
     if (!dragging) return;
     e.preventDefault();
@@ -116,7 +118,6 @@
     const sv = toSVG(c.x, c.y);
     updateCord(sv.x, Math.max(AY + 20, sv.y));
   }
-
   function onUp() {
     if (!dragging) return;
     dragging = false;
@@ -146,7 +147,7 @@
   function toggleLight() {
     playClick();
     lightOn = !lightOn;
-    ROOT.style.setProperty('--lamp-on', lightOn ? '1' : '0');
+    setOn(lightOn ? '1' : '0');
     card.classList.toggle('is-active', lightOn);
     if (hint) hint.classList.toggle('is-hidden', lightOn);
     if (lightOn) {
@@ -155,10 +156,9 @@
     }
   }
 
-  /** Reset lamp when login overlay is shown again (logout) */
   function resetLamp() {
     lightOn = false;
-    ROOT.style.setProperty('--lamp-on', '0');
+    setOn('0');
     card.classList.remove('is-active');
     if (hint) hint.classList.remove('is-hidden');
     updateCord(REST_X, REST_Y);
@@ -175,7 +175,6 @@
     }
   };
 
-  // Password visibility toggle
   const pwInput = document.getElementById('loginPass');
   const toggleBtn = document.getElementById('js-toggle-pw');
   if (pwInput && toggleBtn) {
@@ -186,8 +185,5 @@
     });
   }
 
-  // If overlay already visible on load, keep lamp off until user pulls
-  if (overlay && !overlay.classList.contains('hidden')) {
-    resetLamp();
-  }
+  if (!overlay.classList.contains('hidden')) resetLamp();
 })();

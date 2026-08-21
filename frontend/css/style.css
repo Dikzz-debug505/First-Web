@@ -1735,3 +1735,271 @@ select:focus:not(:focus-visible) {
     padding: 2px 7px;
     white-space: nowrap;
 }
+
+/* =========================================================
+   Login LAMP theme — SCOPED under .login-overlay only
+   (admin panel & main app keep original dark-blue styles)
+   ========================================================= */
+.login-overlay {
+    --lamp-on: 0;
+    --opening: hsl(270, calc((10 + var(--lamp-on) * 70) * 1%), calc((18 + var(--lamp-on) * 68) * 1%));
+    --base-top: hsl(270, calc(var(--lamp-on) * 25%), calc((30 + var(--lamp-on) * 38) * 1%));
+    --base-side: hsl(270, calc(var(--lamp-on) * 25%), calc((15 + var(--lamp-on) * 35) * 1%));
+    --post: hsl(270, calc(var(--lamp-on) * 20%), calc((18 + var(--lamp-on) * 35) * 1%));
+    --shade-l: hsl(270, calc(var(--lamp-on) * 35%), calc((28 + var(--lamp-on) * 55) * 1%));
+    --shade-m: hsl(270, calc(var(--lamp-on) * 35%), calc((16 + var(--lamp-on) * 32) * 1%));
+    --shade-d: hsl(270, calc(var(--lamp-on) * 35%), calc((9 + var(--lamp-on) * 18) * 1%));
+    --blend-a: hsla(270, calc(var(--lamp-on) * 30%), calc((45 + var(--lamp-on) * 50) * 1%), 0.85);
+    --blend-b: hsla(270, calc(var(--lamp-on) * 30%), calc((18 + var(--lamp-on) * 28) * 1%), 0.25);
+    --blend-c: hsla(270, calc(var(--lamp-on) * 30%), calc((18 + var(--lamp-on) * 28) * 1%), 0.50);
+    --glow-a: hsla(270, calc(var(--lamp-on) * 40%), calc((40 + var(--lamp-on) * 55) * 1%), 0.85);
+    --cord-l: calc((38 + var(--lamp-on) * 52) * 1%);
+    --lamp-ease: 0.88s cubic-bezier(0.22, 1, 0.36, 1);
+
+    background: #07000d !important;
+    flex-direction: column;
+    overflow: hidden;
+}
+.login-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 65% at 55% 50%,
+        rgba(100, 20, 180, 0.38) 0%,
+        rgba(40, 5, 80, 0.12) 52%,
+        transparent 75%);
+    opacity: var(--lamp-on);
+    transition: opacity 0.9s ease;
+    pointer-events: none;
+    z-index: 0;
+}
+.login-overlay .login-scene {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 64px;
+    flex-wrap: wrap;
+}
+.login-overlay .lamp {
+    height: 42vmin;
+    min-height: 260px;
+    max-height: 400px;
+    overflow: visible !important;
+    flex-shrink: 0;
+    z-index: 2;
+}
+.login-overlay .lamp-cord {
+    stroke: hsl(270, 0%, var(--cord-l));
+    transition: stroke 0.1s;
+}
+.login-overlay .lamp-light { opacity: var(--lamp-on); }
+.login-overlay .fill-opening { fill: var(--opening); }
+.login-overlay .fill-base-top { fill: var(--base-top); }
+.login-overlay .fill-base-side { fill: var(--base-side); }
+.login-overlay .fill-post { fill: var(--post); }
+.login-overlay .fill-shade { fill: var(--shade-d); }
+.login-overlay .lamp-hit { cursor: grab; fill: transparent; }
+.login-overlay .lamp-hit:active { cursor: grabbing; }
+
+/* Card starts hidden until lamp on */
+.login-overlay .login-card {
+    width: 100%;
+    max-width: 340px;
+    padding: 28px 26px 22px;
+    background: rgba(26, 4, 50, 0.72) !important;
+    backdrop-filter: blur(28px) saturate(1.5);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    border-radius: 22px !important;
+    border: 1px solid rgba(140, 50, 200, 0.28) !important;
+    box-shadow: 0 22px 56px rgba(0, 0, 0, 0.72) !important;
+    opacity: 0;
+    transform: scale(0.9) translateX(12px);
+    transition:
+        opacity var(--lamp-ease),
+        transform var(--lamp-ease),
+        border-color var(--lamp-ease),
+        box-shadow var(--lamp-ease);
+    pointer-events: none;
+    position: relative;
+    overflow: hidden;
+    z-index: 3;
+    animation: none !important;
+}
+.login-overlay .login-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    background: linear-gradient(138deg, rgba(255, 255, 255, 0.05) 0%, transparent 55%);
+    pointer-events: none;
+}
+.login-overlay .login-card.is-active {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+    pointer-events: auto;
+    border-color: rgba(170, 65, 255, 0.38) !important;
+    box-shadow:
+        0 22px 56px rgba(0, 0, 0, 0.65),
+        0 0 44px 3px rgba(118, 30, 192, 0.16),
+        0 0 80px 12px rgba(55, 7, 110, 0.10) !important;
+}
+
+.login-overlay .login-brand { text-align: center; margin-bottom: 16px; }
+.login-overlay .login-icon { font-size: 28px; margin-bottom: 4px; }
+.login-overlay .login-brand h1 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(130deg, #e0a8ff, #c678f5 55%, #fff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+.login-overlay .login-brand p { font-size: 0.78rem; color: #a07ec0; margin-top: 4px; }
+
+.login-overlay .login-field { margin-bottom: 12px; }
+.login-overlay .login-field label {
+    display: block;
+    font-size: 0.64rem;
+    font-weight: 500;
+    color: #a07ec0;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+.login-overlay .field-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.login-overlay .field-icon {
+    position: absolute;
+    left: 11px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0.7;
+    z-index: 1;
+}
+.login-overlay .field-wrap input,
+.login-overlay .login-field input {
+    width: 100%;
+    padding: 10px 38px 10px 34px;
+    background: rgba(255, 255, 255, 0.043) !important;
+    border: 1px solid rgba(180, 100, 255, 0.18) !important;
+    border-radius: 10px;
+    color: #f0e4ff !important;
+    font-family: var(--font);
+    font-size: 0.88rem;
+    outline: none;
+    box-sizing: border-box;
+}
+.login-overlay .field-wrap input::placeholder,
+.login-overlay .login-field input::placeholder {
+    color: rgba(160, 126, 192, 0.35);
+}
+.login-overlay .field-wrap input:focus,
+.login-overlay .login-field input:focus {
+    border-color: #bf5af2 !important;
+    background: rgba(140, 47, 201, 0.07) !important;
+    box-shadow: 0 0 0 3px rgba(140, 47, 201, 0.12);
+}
+.login-overlay .field-toggle {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    line-height: 1;
+    opacity: 0.75;
+    z-index: 1;
+}
+.login-overlay .field-toggle:hover { opacity: 1; }
+
+.login-overlay .login-btn {
+    width: 100%;
+    margin-top: 4px;
+    padding: 11px !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em;
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, #3d0070, #8b2fc9) !important;
+    border: none !important;
+    box-shadow: 0 4px 20px rgba(85, 13, 165, 0.42);
+}
+.login-overlay .login-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 26px rgba(85, 13, 165, 0.55);
+}
+.login-overlay .login-note {
+    margin-top: 14px;
+    font-size: 11px;
+    color: #a07ec0;
+    text-align: center;
+}
+.login-overlay .login-error {
+    font-size: 12px;
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin-bottom: 12px;
+}
+.login-overlay .lang-switch {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+.login-overlay .lang-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(180, 100, 255, 0.2);
+    color: #a07ec0;
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-size: 11px;
+    cursor: pointer;
+}
+.login-overlay .lang-btn:hover,
+.login-overlay .lang-btn.active {
+    border-color: #bf5af2;
+    color: #e0a8ff;
+}
+.login-overlay .login-lamp-hint {
+    position: relative;
+    z-index: 10;
+    margin-top: 18px;
+    font-size: 0.72rem;
+    color: #a07ec0;
+    letter-spacing: 0.04em;
+    text-align: center;
+    opacity: 0.85;
+    transition: opacity 0.4s ease;
+}
+.login-overlay .login-lamp-hint.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.login-overlay .login-secure-pill {
+    border-color: rgba(140, 50, 200, 0.35);
+    background: rgba(7, 0, 13, 0.9);
+}
+
+@media (max-width: 720px) {
+    .login-overlay .login-scene {
+        gap: 28px;
+        flex-direction: column;
+    }
+    .login-overlay .lamp {
+        height: 32vmin;
+        min-height: 180px;
+        max-height: 240px;
+    }
+    .login-overlay .login-card { max-width: 300px; }
+}
