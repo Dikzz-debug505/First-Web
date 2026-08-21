@@ -56,7 +56,6 @@ module.exports = async function handler(req, res) {
 
   const uname = row.username;
 
-  // Soft delete
   const { error: updErr } = await supabase
     .from('app_users')
     .update({ is_active: false, updated_at: new Date().toISOString() })

@@ -20,7 +20,6 @@ module.exports = async function handler(req, res) {
 
   const supabase = getSupabase();
   if (!supabase) {
-    // Default off if misconfigured — jangan lock semua user
     return json(res, 200, { ok: true, maintenance: false });
   }
 

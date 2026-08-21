@@ -90,7 +90,6 @@ module.exports = async function handler(req, res) {
     }
     const expiryDate = body.expiryDate ? String(body.expiryDate).slice(0, 10) : null;
 
-    // Same charset as /api/login — blocks SQL/ILIKE metacharacters
     const USERNAME_RE = /^[a-zA-Z0-9._-]{1,64}$/;
     if (!username || !USERNAME_RE.test(username) || username.indexOf('\0') !== -1) {
       return json(res, 200, {
@@ -105,7 +104,6 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { ok: false, message: 'Password maksimal 128 karakter' });
     }
 
-    // Cari existing (parameterized .eq first, then exact case-insensitive filter)
     const { data: existingRows, error: findErr } = await supabase
       .from('app_users')
       .select('username, is_admin, password_hash')
@@ -163,7 +161,6 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { ok: true, message: 'User diperbarui', username: existing.username });
     }
 
-    // Create
     if (existing) {
       return json(res, 200, { ok: false, message: 'Username sudah dipakai' });
     }

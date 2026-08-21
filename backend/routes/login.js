@@ -61,7 +61,6 @@ function timingSafeEqualStr(a, b) {
   const aa = Buffer.from(String(a || ''), 'utf8');
   const bb = Buffer.from(String(b || ''), 'utf8');
   if (aa.length !== bb.length) {
-    // still do a dummy compare to reduce length oracle slightly
     try {
       crypto.timingSafeEqual(aa, aa);
     } catch (_) {}
@@ -83,14 +82,12 @@ function sleep(ms) {
 }
 
 async function failResponse(res, message, extra) {
-  // Random delay 120–280ms to slow brute force & reduce timing leaks
   await sleep(120 + Math.floor(Math.random() * 160));
   const body = Object.assign({ ok: false, message: message || MSG_INVALID }, extra || {});
   return json(res, 200, body);
 }
 
 module.exports = async function handler(req, res) {
-  // Security headers for API response
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Cache-Control', 'no-store');
 
@@ -106,7 +103,6 @@ module.exports = async function handler(req, res) {
 
   const supabase = getSupabase();
   if (!supabase) {
-    // Do not leak env details to client in production-style message
     return json(res, 500, { ok: false, message: MSG_GENERIC });
   }
 
@@ -115,7 +111,6 @@ module.exports = async function handler(req, res) {
   const password = String(body.password || '');
   const deviceId = String(body.deviceId || '').trim();
 
-  // --- Strict validation (reject before any DB call) ---
   if (
     !usernameRaw ||
     !USERNAME_RE.test(usernameRaw) ||
@@ -139,9 +134,6 @@ module.exports = async function handler(req, res) {
     return failResponse(res, MSG_LOCKED, { locked: true, retryAfter: retrySec });
   }
 
-  // --- Parameterized lookup only (no string-built SQL) ---
-  // Use eq on lower-case match via filter: fetch candidates with exact charset usernames
-  // .eq is exact; we compare case-insensitively in JS after a narrow query.
   let users = null;
   let findErr = null;
   try {
@@ -153,7 +145,6 @@ module.exports = async function handler(req, res) {
     users = result.data;
     findErr = result.error;
 
-    // Case-insensitive fallback if stored with different casing
     if (!findErr && (!users || users.length === 0)) {
       const result2 = await supabase
         .from('app_users')
@@ -181,7 +172,6 @@ module.exports = async function handler(req, res) {
     (u) => String(u.username || '').toLowerCase() === username.toLowerCase()
   );
 
-  // Uniform failure path (no user enumeration)
   if (!row || !row.is_active) {
     registerFail(bucket);
     return failResponse(res, MSG_INVALID);
@@ -193,13 +183,11 @@ module.exports = async function handler(req, res) {
     return failResponse(res, MSG_INVALID);
   }
 
-  // Expiry
   if (row.expiry_date) {
     const expDate = new Date(String(row.expiry_date));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (isNaN(expDate.getTime()) || today > expDate) {
-      // Same generic style, but flag for client UI
       return failResponse(res, 'Akun sudah kedaluarsa', { expired: true });
     }
   }
@@ -207,7 +195,6 @@ module.exports = async function handler(req, res) {
   const uname = String(row.username);
   const isAdmin = !!row.is_admin;
 
-  // Maintenance mode: block non-admin login (admin tetap bisa masuk)
   if (!isAdmin) {
     try {
       const { data: maintRows } = await supabase
@@ -225,12 +212,10 @@ module.exports = async function handler(req, res) {
         });
       }
     } catch (e) {
-      // Jika settings gagal dibaca, jangan blokir login
       console.error('login maintenance check');
     }
   }
 
-  // Device limit (skip admin)
   if (!isAdmin) {
     const maxRaw = row.max_devices;
     const unlimited = maxRaw == null || maxRaw === '' || Number(maxRaw) <= 0;
@@ -278,7 +263,6 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // Success — clear rate-limit bucket
   clearFails(key);
 
   const token = issueToken(uname, isAdmin);

@@ -463,7 +463,6 @@
       if (!key) return;
       const val = t(key);
       if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        // skip value for inputs unless data-i18n-target
       } else {
         el.textContent = val;
       }
@@ -480,7 +479,6 @@
       const key = el.getAttribute('data-i18n-title');
       if (key) el.setAttribute('title', t(key));
     });
-    // Sync language switcher UI
     document.querySelectorAll('[data-lang-btn]').forEach(function (btn) {
       const code = btn.getAttribute('data-lang-btn');
       if (code === L) btn.classList.add('lang-active');

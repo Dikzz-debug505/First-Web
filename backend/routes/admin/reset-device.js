@@ -32,7 +32,6 @@ module.exports = async function handler(req, res) {
     return json(res, 200, { ok: false, message: 'Username wajib' });
   }
 
-  // Resolve exact username (case-insensitive)
   const { data: rows } = await supabase
     .from('app_users')
     .select('username, is_admin')

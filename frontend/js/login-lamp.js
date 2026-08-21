@@ -16,7 +16,6 @@
 
   if (!cord || !hit || !lampEl || !card || !overlay) return;
 
-  // Prefer CSS var on overlay (scoped), also set on root for SVG calc
   function setOn(v) {
     overlay.style.setProperty('--lamp-on', v);
     ROOT.style.setProperty('--lamp-on', v);

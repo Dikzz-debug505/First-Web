@@ -5,8 +5,6 @@
 const { requireAdmin, getSupabase, parseBody, json } = require('../../lib/session');
 
 async function ensureSettingsTable(supabase) {
-  // Tabel dibuat lewat schema SQL; di sini hanya baca/tulis.
-  // Jika belum ada, insert akan gagal dan kita kembalikan error jelas.
 }
 
 module.exports = async function handler(req, res) {
@@ -64,7 +62,6 @@ module.exports = async function handler(req, res) {
       updated_at: new Date().toISOString()
     };
 
-    // Upsert by key
     const { data: existing, error: findErr } = await supabase
       .from('app_settings')
       .select('key')

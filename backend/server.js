@@ -12,17 +12,14 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '256kb' }));
 
-// Security-ish headers (mirip _headers)
 app.use(function (req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   next();
 });
 
-// ---- API routes (same handlers as Vercel serverless) ----
 function mount(handler) {
   return function (req, res) {
-    // Express req/res compatible enough for our handlers
     return handler(req, res);
   };
 }
@@ -47,7 +44,13 @@ app.options('/api/admin/maintenance', mount(require('./routes/admin/maintenance'
 app.get('/api/admin/maintenance', mount(require('./routes/admin/maintenance')));
 app.post('/api/admin/maintenance', mount(require('./routes/admin/maintenance')));
 
-// ---- Frontend static ----
+// Protected tool scripts (obscure paths, auth required)
+const toolHandler = require('./routes/tools');
+['1','2','3'].forEach(function (id) {
+  app.options('/api/x/' + id, mount(toolHandler));
+  app.get('/api/x/' + id, mount(toolHandler));
+});
+
 const frontendDir = path.join(__dirname, '..', 'frontend');
 app.use(express.static(frontendDir, {
   etag: true,
@@ -58,7 +61,6 @@ app.use(express.static(frontendDir, {
   }
 }));
 
-// SPA fallback
 app.get('*', function (req, res) {
   res.sendFile(path.join(frontendDir, 'index.html'));
 });
