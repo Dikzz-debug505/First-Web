@@ -507,6 +507,7 @@
             let loginInProgress = false;
             let currentSessionUser = null;
             let currentIsAdmin = false;
+            let currentIsSuper = false;
 
             function getOrCreateDeviceId() {
                 try {
@@ -904,12 +905,13 @@
                 return Math.random().toString(36).slice(2) + Date.now().toString(36);
             }
 
-            function setSession(username, isAdmin, token) {
+            function setSession(username, isAdmin, token, isSuper) {
                 try {
                     const nonce = secureRandomToken();
                     sessionStorage.setItem(LOGIN_SESSION_KEY, JSON.stringify({
                         u: username,
                         a: !!isAdmin,
+                        s: !!isSuper,
                         t: Date.now(),
                         n: nonce,
                         d: getOrCreateDeviceId(),
@@ -922,6 +924,7 @@
                 try { sessionStorage.removeItem(LOGIN_SESSION_KEY); } catch (e) {}
                 currentSessionUser = null;
                 currentIsAdmin = false;
+                currentIsSuper = false;
             }
 
             function readSession() {
@@ -1144,19 +1147,45 @@
                 loadProtectedTools();
             }
 
-            function showAdminApp(username, skipOverlayHide) {
+            function applyAdminPanelMode() {
+                const maintCard = document.querySelector('.admin-maintenance-card');
+                const roleField = document.getElementById('adminRoleField');
+                const deleteAllBtn = document.getElementById('adminDeleteAllManagedBtn');
+                const subtitle = adminApp && adminApp.querySelector('.header-left-text p');
+                if (currentIsSuper) {
+                    if (maintCard) maintCard.style.display = '';
+                    if (roleField) roleField.style.display = '';
+                    if (deleteAllBtn) deleteAllBtn.style.display = '';
+                    if (adminUserBadge) adminUserBadge.textContent = '🛡️ ' + currentSessionUser + ' (Super Admin)';
+                    if (subtitle) subtitle.setAttribute('data-i18n', 'admin.subtitle');
+                } else {
+                    if (maintCard) maintCard.style.display = 'none';
+                    if (roleField) roleField.style.display = 'none';
+                    if (deleteAllBtn) deleteAllBtn.style.display = '';
+                    if (adminUserBadge) adminUserBadge.textContent = '🛡️ ' + currentSessionUser + ' (Admin)';
+                    if (subtitle) {
+                        subtitle.removeAttribute('data-i18n');
+                        subtitle.textContent = 'Panel Admin — kelola user biasa saja';
+                    }
+                }
+            }
+
+            function showAdminApp(username, skipOverlayHide, isSuper) {
                 currentSessionUser = username;
                 currentIsAdmin = true;
+                currentIsSuper = !!isSuper;
                 if (mainApp) mainApp.style.display = 'none';
                 if (adminApp) adminApp.style.display = '';
-                if (adminUserBadge) adminUserBadge.textContent = '🛡️ ' + username + ' (Admin)';
+                applyAdminPanelMode();
                 if (!skipOverlayHide && loginOverlay) {
                     loginOverlay.classList.add('hidden');
                     loginOverlay.classList.remove('fade-out');
                 }
                 if (typeof window.MLBB_showMusicFloat === 'function') window.MLBB_showMusicFloat();
                 renderAdminUserTable();
-                loadAdminMaintenanceStatus();
+                if (currentIsSuper) {
+                    loadAdminMaintenanceStatus();
+                }
             }
 
             function hideLoginOverlaySmooth(callback) {
@@ -1190,6 +1219,7 @@
                 loginInProgress = false;
                 currentSessionUser = null;
                 currentIsAdmin = false;
+                currentIsSuper = false;
                 if (loginPass) loginPass.value = '';
                 if (loginUser) loginUser.value = '';
                 if (window.MLBB_loginLamp && typeof window.MLBB_loginLamp.reset === 'function') {
@@ -1275,12 +1305,15 @@
                     setTimeout(function () {
                         showSpinnerSuccess((window.MLBB_i18n && MLBB_i18n.t('login.success')) || 'Berhasil! Mengalihkan...');
                         setTimeout(function () {
-                            setSession(result.username, result.isAdmin, result.token || null);
+                            setSession(result.username, result.isAdmin, result.token || null, result.isSuper);
                             hideLoginOverlaySmooth(function () {
                                 const _t = window.MLBB_i18n && MLBB_i18n.t;
                                 if (result.isAdmin) {
-                                    showAdminApp(result.username, true);
-                                    showToast(_t ? _t('toast.welcome_admin', { name: result.username }) : ('🛡️ Selamat datang Admin, ' + result.username), 'success');
+                                    showAdminApp(result.username, true, !!result.isSuper);
+                                    const welcome = result.isSuper
+                                        ? ('🛡️ Selamat datang Super Admin, ' + result.username)
+                                        : ('🛡️ Selamat datang Admin, ' + result.username);
+                                    showToast(_t ? _t('toast.welcome_admin', { name: result.username }) : welcome, 'success');
                                 } else {
                                     showMainApp(result.username, true);
                                     showToast(_t ? _t('toast.welcome', { name: result.username }) : ('✅ Selamat datang, ' + result.username), 'success');
@@ -1307,7 +1340,7 @@
                 const sess = readSession();
                 if (sess && sess.u) {
                     if (sess.a) {
-                        showAdminApp(sess.u);
+                        showAdminApp(sess.u, false, !!sess.s);
                         return;
                     }
                     fetchMaintenanceStatus().then(function (on) {
@@ -1557,14 +1590,24 @@
                         return;
                     }
                     adminUsersCache = data.users;
+                    if (typeof data.isSuper === 'boolean') {
+                        currentIsSuper = data.isSuper;
+                        applyAdminPanelMode();
+                    }
                     const rows = [];
                     data.users.forEach(function (u) {
                         if (u.isActive === false) return; // sembunyikan soft-deleted
                         const isAdminAcc = !!u.isAdmin;
+                        const isSuperAcc = !!u.isSuper;
                         const maxDev = u.maxDevices == null ? '∞' : String(u.maxDevices);
-                        const srcBadge = isAdminAcc
-                            ? '<span class="admin-badge admin">ADMIN</span>'
-                            : '<span class="admin-badge managed">supabase</span>';
+                        let srcBadge;
+                        if (isSuperAcc) {
+                            srcBadge = '<span class="admin-badge admin">SUPER</span>';
+                        } else if (isAdminAcc) {
+                            srcBadge = '<span class="admin-badge admin">ADMIN</span>';
+                        } else {
+                            srcBadge = '<span class="admin-badge managed">user</span>';
+                        }
                         const expiryStr = u.expiryDate ? escapeHtml(String(u.expiryDate)) : '—';
                         const devCount = Number(u.deviceCount) || 0;
                         let actions = '';
@@ -1730,6 +1773,9 @@
 
                     if (adminSaveBtn) adminSaveBtn.disabled = true;
 
+                    const roleRadio = document.querySelector('input[name="adminAccountRole"]:checked');
+                    const createAsAdmin = !isEdit && currentIsSuper && roleRadio && roleRadio.value === 'admin';
+
                     adminApi('/api/admin/users', {
                         method: 'POST',
                         body: {
@@ -1737,7 +1783,8 @@
                             password: pass || undefined,
                             maxDevices: maxDev,
                             expiryDate: exp,
-                            isEdit: isEdit
+                            isEdit: isEdit,
+                            createAsAdmin: !!createAsAdmin
                         }
                     }).then(function (data) {
                         if (adminSaveBtn) adminSaveBtn.disabled = false;
@@ -1749,11 +1796,15 @@
                             showAdminFormError(data.message || t('js.save_fail'));
                             return;
                         }
-                        showToast(
-                            (window.MLBB_i18n && MLBB_i18n.t(isEdit ? 'toast.user_updated' : 'toast.user_saved'))
-                            || (isEdit ? '✅ User diperbarui di Supabase' : '✅ User baru ditambahkan ke Supabase'),
-                            'success'
-                        );
+                        let toastMsg;
+                        if (isEdit) {
+                            toastMsg = (window.MLBB_i18n && MLBB_i18n.t('toast.user_updated')) || '✅ User diperbarui di Supabase';
+                        } else if (data.isAdmin) {
+                            toastMsg = '✅ Akun admin baru dibuat (punya panel sendiri)';
+                        } else {
+                            toastMsg = (window.MLBB_i18n && MLBB_i18n.t('toast.user_saved')) || '✅ User baru ditambahkan ke Supabase';
+                        }
+                        showToast(toastMsg, 'success');
                         resetAdminForm();
                         if (adminPassword) adminPassword.placeholder = 'Masukkan password';
                         renderAdminUserTable();

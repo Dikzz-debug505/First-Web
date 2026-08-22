@@ -19,12 +19,18 @@ function b64urlJson(obj) {
   return b64url(JSON.stringify(obj));
 }
 
-function issueToken(username, isAdmin) {
+/**
+ * @param {string} username
+ * @param {boolean} isAdmin  — true untuk super maupun sub-admin
+ * @param {boolean} [isSuper] — true hanya untuk super admin (panel utama)
+ */
+function issueToken(username, isAdmin, isSuper) {
   const secret = getSecret();
   if (!secret) return null;
   const payload = {
     u: String(username || '').trim(),
     a: !!isAdmin,
+    s: !!isSuper,
     exp: Date.now() + TOKEN_TTL_MS
   };
   const body = b64urlJson(payload);
@@ -51,7 +57,11 @@ function verifyToken(token) {
     const payload = JSON.parse(json);
     if (!payload || !payload.u || typeof payload.u !== 'string') return null;
     if (!payload.exp || Date.now() > Number(payload.exp)) return null;
-    return { username: payload.u, isAdmin: !!payload.a };
+    return {
+      username: payload.u,
+      isAdmin: !!payload.a,
+      isSuper: !!payload.s
+    };
   } catch {
     return null;
   }
@@ -64,10 +74,19 @@ function getBearerToken(req) {
   return m ? m[1].trim() : null;
 }
 
+/** Any admin (super atau sub-admin) */
 function requireAdmin(req) {
   const token = getBearerToken(req);
   const sess = verifyToken(token);
   if (!sess || !sess.isAdmin) return null;
+  return sess;
+}
+
+/** Hanya super admin (panel utama) */
+function requireSuperAdmin(req) {
+  const token = getBearerToken(req);
+  const sess = verifyToken(token);
+  if (!sess || !sess.isAdmin || !sess.isSuper) return null;
   return sess;
 }
 
@@ -103,6 +122,7 @@ module.exports = {
   issueToken,
   verifyToken,
   requireAdmin,
+  requireSuperAdmin,
   getSupabase,
   sha256Hex,
   parseBody,

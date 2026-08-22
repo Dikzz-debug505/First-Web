@@ -139,7 +139,7 @@ module.exports = async function handler(req, res) {
   try {
     const result = await supabase
       .from('app_users')
-      .select('username, password_hash, is_admin, max_devices, expiry_date, is_active')
+      .select('username, password_hash, is_admin, is_super, max_devices, expiry_date, is_active')
       .eq('username', username)
       .limit(1);
     users = result.data;
@@ -148,7 +148,7 @@ module.exports = async function handler(req, res) {
     if (!findErr && (!users || users.length === 0)) {
       const result2 = await supabase
         .from('app_users')
-        .select('username, password_hash, is_admin, max_devices, expiry_date, is_active')
+        .select('username, password_hash, is_admin, is_super, max_devices, expiry_date, is_active')
         .ilike('username', username.replace(/[%_]/g, '')) // strip any wildcard chars (already blocked by regex)
         .limit(3);
       if (!result2.error && result2.data) {
@@ -194,6 +194,8 @@ module.exports = async function handler(req, res) {
 
   const uname = String(row.username);
   const isAdmin = !!row.is_admin;
+  // Super hanya jika is_super = true (sub-admin: is_admin=true, is_super=false)
+  const isSuper = isAdmin && !!row.is_super;
 
   if (!isAdmin) {
     try {
@@ -265,11 +267,12 @@ module.exports = async function handler(req, res) {
 
   clearFails(key);
 
-  const token = issueToken(uname, isAdmin);
+  const token = issueToken(uname, isAdmin, isSuper);
   return json(res, 200, {
     ok: true,
     username: uname,
     isAdmin,
+    isSuper: !!isSuper,
     token: token || undefined
   });
 };

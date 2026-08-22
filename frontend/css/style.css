@@ -1227,6 +1227,38 @@ body.side-menu-open {
     gap: 12px;
     margin-bottom: 14px;
 }
+#adminRoleField {
+    grid-column: 1 / -1;
+}
+.admin-role-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 6px;
+}
+.admin-role-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.admin-role-option:hover {
+    border-color: var(--accent-bright);
+}
+.admin-role-option input {
+    margin: 0;
+    accent-color: var(--accent-bright);
+}
+.admin-role-option:has(input:checked) {
+    border-color: var(--accent-bright);
+    background: var(--accent-soft);
+}
 .admin-form-actions {
     display: flex;
     flex-wrap: wrap;

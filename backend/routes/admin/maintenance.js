@@ -2,7 +2,7 @@
  * GET  /api/admin/maintenance — status (admin only)
  * POST /api/admin/maintenance — set { enabled: true|false } (admin only)
  */
-const { requireAdmin, getSupabase, parseBody, json } = require('../../lib/session');
+const { requireAdmin, requireSuperAdmin, getSupabase, parseBody, json } = require('../../lib/session');
 
 async function ensureSettingsTable(supabase) {
 }
@@ -18,9 +18,15 @@ module.exports = async function handler(req, res) {
     return res.end();
   }
 
-  const admin = requireAdmin(req);
+  // GET status: semua admin boleh lihat; POST ubah: hanya super admin
+  const admin = req.method === 'POST' ? requireSuperAdmin(req) : requireAdmin(req);
   if (!admin) {
-    return json(res, 401, { ok: false, message: 'Unauthorized — login sebagai admin' });
+    return json(res, 401, {
+      ok: false,
+      message: req.method === 'POST'
+        ? 'Unauthorized — hanya super admin yang bisa mengubah mode update'
+        : 'Unauthorized — login sebagai admin'
+    });
   }
 
   const supabase = getSupabase();

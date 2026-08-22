@@ -9,6 +9,7 @@ create table if not exists public.app_users (
   username text not null,
   password_hash text not null,          -- SHA-256 hex (sama format credentials.js)
   is_admin boolean not null default false,
+  is_super boolean not null default false,  -- true = super admin (panel utama)
   max_devices int null,                 -- null = unlimited
   expiry_date date null,                -- null = unlimited
   is_active boolean not null default true,
@@ -16,6 +17,10 @@ create table if not exists public.app_users (
   updated_at timestamptz not null default now(),
   constraint app_users_username_unique unique (username)
 );
+
+-- Migrasi: kolom is_super jika tabel sudah ada tanpa kolom ini
+alter table public.app_users
+  add column if not exists is_super boolean not null default false;
 
 -- username case-insensitive lookup
 create index if not exists app_users_username_lower_idx
@@ -38,12 +43,13 @@ create index if not exists user_devices_username_idx
 alter table public.app_users enable row level security;
 alter table public.user_devices enable row level security;
 
--- 4) Seed user (hanya akun 'adi')
-insert into public.app_users (username, password_hash, is_admin, max_devices, expiry_date, is_active)
+-- 4) Seed user (akun super admin 'adi')
+insert into public.app_users (username, password_hash, is_admin, is_super, max_devices, expiry_date, is_active)
 values
   (
     'adi',
     'e33608fbb683329abf5d0fd116f9d4d2f7866bfbaf33ec42f89e1199511a822e',
+    true,
     true,
     1,
     null,
@@ -52,10 +58,17 @@ values
 on conflict (username) do update set
   password_hash = excluded.password_hash,
   is_admin = excluded.is_admin,
+  is_super = excluded.is_super,
   max_devices = excluded.max_devices,
   expiry_date = excluded.expiry_date,
   is_active = excluded.is_active,
   updated_at = now();
+
+-- Pastikan semua is_admin lama yang belum punya is_super tetap super (satu kali)
+update public.app_users
+set is_super = true
+where is_admin = true and is_super = false
+  and username = 'adi';
 
 -- 5) Settings (maintenance / update website mode)
 create table if not exists public.app_settings (

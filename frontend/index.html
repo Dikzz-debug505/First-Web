@@ -451,6 +451,20 @@
                 <form id="adminUserForm" autocomplete="off">
                     <input type="hidden" id="adminEditIndex" value="-1" />
                     <div class="admin-form-grid">
+                        <div class="login-field" id="adminRoleField">
+                            <label data-i18n="admin.role">Tipe Akun</label>
+                            <div class="admin-role-options">
+                                <label class="admin-role-option">
+                                    <input type="radio" name="adminAccountRole" value="user" checked />
+                                    <span>👤 User biasa</span>
+                                </label>
+                                <label class="admin-role-option">
+                                    <input type="radio" name="adminAccountRole" value="admin" />
+                                    <span>🛡️ Admin (panel sendiri)</span>
+                                </label>
+                            </div>
+                            <p class="admin-hint" style="margin-top:6px;margin-bottom:0;">Admin yang dibuat punya login &amp; panel terpisah — hanya bisa kelola user biasa, tidak bisa akses panel super admin.</p>
+                        </div>
                         <div class="login-field">
                             <label for="adminUsername" data-i18n="admin.username">Username</label>
                             <input type="text" id="adminUsername" required maxlength="64" placeholder="username" />
@@ -506,12 +520,12 @@
             <div class="admin-card admin-note">
                 <strong data-i18n="admin.note.title">Catatan penting:</strong>
                 <ul>
-                    <li data-i18n="admin.note.1">Akun admin khusus tidak bisa dihapus/diubah lewat panel ini.</li>
-                    <li data-i18n="admin.note.2">User baru dari panel ini langsung masuk ke Supabase dan bisa login dari device mana pun.</li>
-                    <li data-i18n="admin.note.3">Hapus menonaktifkan akun di database + menghapus device registry.</li>
-                    <li data-i18n="admin.note.4">Hapus Semua menonaktifkan semua akun non-admin di Supabase.</li>
-                    <li data-i18n="admin.note.5">Batas device disimpan di Supabase (global, sinkron antar device).</li>
-                    <li data-i18n="admin.note.6">Untuk reset device suatu user, klik tombol "Reset Device" di tabel.</li>
+                    <li data-i18n="admin.note.1">Super Admin bisa membuat User biasa atau Admin (sub-admin). Sub-admin punya panel sendiri.</li>
+                    <li data-i18n="admin.note.2">Sub-admin hanya bisa kelola user biasa — tidak bisa mengubah maintenance, membuat admin lain, atau mengedit akun admin.</li>
+                    <li data-i18n="admin.note.3">Akun admin (super &amp; sub) tidak bisa dihapus/diubah lewat panel.</li>
+                    <li data-i18n="admin.note.4">User baru langsung masuk ke Supabase dan bisa login dari device mana pun.</li>
+                    <li data-i18n="admin.note.5">Hapus menonaktifkan akun di database + menghapus device registry.</li>
+                    <li data-i18n="admin.note.6">Batas device disimpan di Supabase (global, sinkron antar device).</li>
                     <li data-i18n="admin.note.7">Password disimpan sebagai SHA-256 hash di server (tidak pernah ditampilkan).</li>
                 </ul>
             </div>

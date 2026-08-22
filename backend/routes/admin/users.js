@@ -1,9 +1,16 @@
 /**
  * GET  /api/admin/users  — list users + device counts (admin only)
  * POST /api/admin/users  — create / update user (admin only)
- * Body POST: { username, password?, maxDevices?, expiryDate?, isEdit? }
+ * Body POST: {
+ *   username, password?, maxDevices?, expiryDate?, isEdit?,
+ *   createAsAdmin?  — true = buat sub-admin (hanya super admin)
+ * }
  *
  * Auth: Authorization: Bearer <token from login>
+ *
+ * Hierarchy:
+ *   - Super admin (is_super): lihat semua, bisa buat user biasa ATAU sub-admin
+ *   - Sub-admin (is_admin, !is_super): hanya lihat/kelola user biasa, tidak bisa sentuh admin
  */
 const { requireAdmin, getSupabase, sha256Hex, parseBody, json } = require('../../lib/session');
 
@@ -20,16 +27,24 @@ module.exports = async function handler(req, res) {
     return json(res, 401, { ok: false, message: 'Unauthorized — login sebagai admin' });
   }
 
+  const isSuper = !!admin.isSuper;
   const supabase = getSupabase();
   if (!supabase) {
     return json(res, 500, { ok: false, message: 'Server misconfigured' });
   }
 
   if (req.method === 'GET') {
-    const { data: users, error } = await supabase
+    let query = supabase
       .from('app_users')
-      .select('username, password_hash, is_admin, max_devices, expiry_date, is_active, created_at, updated_at')
+      .select('username, password_hash, is_admin, is_super, max_devices, expiry_date, is_active, created_at, updated_at')
       .order('username', { ascending: true });
+
+    // Sub-admin hanya melihat user biasa (bukan admin lain)
+    if (!isSuper) {
+      query = query.eq('is_admin', false);
+    }
+
+    const { data: users, error } = await query;
 
     if (error) {
       console.error('admin list users', error);
@@ -61,10 +76,13 @@ module.exports = async function handler(req, res) {
     });
 
     const list = (users || []).map(function (u) {
+      const isAdm = !!u.is_admin;
+      const isSup = isAdm && !!u.is_super;
       return {
         username: u.username,
         hasPassword: !!(u.password_hash && String(u.password_hash).length > 0),
-        isAdmin: !!u.is_admin,
+        isAdmin: isAdm,
+        isSuper: isSup,
         maxDevices: u.max_devices == null ? null : Number(u.max_devices),
         expiryDate: u.expiry_date || null,
         isActive: !!u.is_active,
@@ -74,7 +92,12 @@ module.exports = async function handler(req, res) {
       };
     });
 
-    return json(res, 200, { ok: true, users: list });
+    return json(res, 200, {
+      ok: true,
+      users: list,
+      isSuper: isSuper,
+      actor: admin.username
+    });
   }
 
   if (req.method === 'POST') {
@@ -82,6 +105,7 @@ module.exports = async function handler(req, res) {
     const username = String(body.username || '').trim();
     const password = body.password != null ? String(body.password) : '';
     const isEdit = !!body.isEdit;
+    const createAsAdmin = !!body.createAsAdmin;
     let maxDevices = body.maxDevices;
     if (maxDevices === '' || maxDevices == null) {
       maxDevices = null;
@@ -104,9 +128,17 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { ok: false, message: 'Password maksimal 128 karakter' });
     }
 
+    // Hanya super admin yang boleh membuat akun admin
+    if (createAsAdmin && !isSuper) {
+      return json(res, 200, {
+        ok: false,
+        message: 'Hanya super admin yang bisa membuat akun admin'
+      });
+    }
+
     const { data: existingRows, error: findErr } = await supabase
       .from('app_users')
-      .select('username, is_admin, password_hash')
+      .select('username, is_admin, is_super, password_hash')
       .eq('username', username)
       .limit(1);
 
@@ -121,7 +153,7 @@ module.exports = async function handler(req, res) {
     if (!existing) {
       const { data: rows2, error: err2 } = await supabase
         .from('app_users')
-        .select('username, is_admin, password_hash')
+        .select('username, is_admin, is_super, password_hash')
         .ilike('username', username.replace(/[%_]/g, ''))
         .limit(5);
       if (err2) {
@@ -132,13 +164,22 @@ module.exports = async function handler(req, res) {
       );
     }
 
+    // Tidak boleh mengubah akun admin lewat panel (kecuali super mengedit sub-admin non-super? — tetap diblok untuk keamanan)
     if (existing && existing.is_admin) {
-      return json(res, 200, { ok: false, message: 'Akun admin khusus tidak bisa diubah lewat panel' });
+      return json(res, 200, {
+        ok: false,
+        message: 'Akun admin tidak bisa diubah lewat panel'
+      });
     }
 
+    // Sub-admin tidak boleh mengedit user yang bukan miliknya untuk diubah jadi admin dll — sudah di-filter
     if (isEdit) {
       if (!existing) {
         return json(res, 200, { ok: false, message: 'User tidak ditemukan' });
+      }
+      // Sub-admin hanya boleh edit user biasa
+      if (!isSuper && existing.is_admin) {
+        return json(res, 200, { ok: false, message: 'Tidak diizinkan mengubah akun admin' });
       }
       const patch = {
         max_devices: maxDevices,
@@ -165,10 +206,12 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { ok: false, message: 'Username sudah dipakai' });
     }
 
+    const newIsAdmin = createAsAdmin && isSuper;
     const { error: insErr } = await supabase.from('app_users').insert({
       username: username,
       password_hash: sha256Hex(password),
-      is_admin: false,
+      is_admin: newIsAdmin,
+      is_super: false, // sub-admin tidak pernah super
       max_devices: maxDevices,
       expiry_date: expiryDate,
       is_active: true
@@ -182,7 +225,15 @@ module.exports = async function handler(req, res) {
       return json(res, 500, { ok: false, message: 'Gagal menambah user' });
     }
 
-    return json(res, 200, { ok: true, message: 'User baru ditambahkan', username: username });
+    const msg = newIsAdmin
+      ? 'Akun admin baru ditambahkan (panel admin terpisah)'
+      : 'User baru ditambahkan';
+    return json(res, 200, {
+      ok: true,
+      message: msg,
+      username: username,
+      isAdmin: newIsAdmin
+    });
   }
 
   return json(res, 405, { ok: false, message: 'Method not allowed' });
