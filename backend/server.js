@@ -46,7 +46,7 @@ app.post('/api/admin/maintenance', mount(require('./routes/admin/maintenance')))
 
 // Protected tool scripts (obscure paths, auth required)
 const toolHandler = require('./routes/tools');
-['1','2','3'].forEach(function (id) {
+['1','2','3','4'].forEach(function (id) {
   app.options('/api/x/' + id, mount(toolHandler));
   app.get('/api/x/' + id, mount(toolHandler));
 });

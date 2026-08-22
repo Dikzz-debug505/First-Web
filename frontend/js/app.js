@@ -1105,7 +1105,7 @@
                 const token = getAdminToken();
                 if (!token) return;
                 // Obscure endpoints — no descriptive filenames exposed
-                const endpoints = ['/api/x/1', '/api/x/2', '/api/x/3'];
+                const endpoints = ['/api/x/1', '/api/x/2', '/api/x/3', '/api/x/4'];
                 try {
                     const blobs = await Promise.all(endpoints.map(async function (url) {
                         const res = await fetch(url, {

@@ -205,7 +205,7 @@
                 </button>
                 <div class="header-left-text">
                     <h1>MLBB Unity Tools</h1>
-                    <p data-i18n="header.subtitle">Hero.bytes Viewer, Document Extractor &amp; GameObject Overrider — Export/Import &amp; Patch</p>
+                    <p data-i18n="header.subtitle">Hero.bytes Viewer, Document Extractor, GameObject Overrider &amp; Python Encrypted — Export/Import &amp; Patch</p>
                 </div>
             </div>
             <div class="header-right">
@@ -227,6 +227,7 @@
             <div class="menu-tab active" data-panel="panel-hero" data-i18n="tab.hero">🧬 Hero.bytes Viewer</div>
             <div class="menu-tab" data-panel="panel-doc" data-i18n="tab.doc">📦 DocumentExtractor</div>
             <div class="menu-tab" data-panel="panel-go" data-i18n="tab.go">⚡ GameObject Overrider</div>
+            <div class="menu-tab" data-panel="panel-py" data-i18n="tab.py">🔐 Python Encrypted</div>
         </div>
 
         <div class="menu-panel active" id="panel-hero">
@@ -405,6 +406,49 @@
                 <button class="btn" id="goResetBtn" disabled data-i18n="btn.reset">↺ reset</button>
             </div>
 
+        </div>
+
+
+        <div class="menu-panel" id="panel-py">
+
+            <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
+                <span data-i18n-html="py.desc">Enkripsi file <strong>.py</strong> jadi skrip self-decrypt (AES-256 + multi-layer XOR/ROL). Semua proses di browser — file tidak diunggah ke server. Butuh <code>pycryptodome</code> saat dijalankan.</span>
+            </p>
+
+            <div class="upload-zone" id="pyDropZone">
+                <div class="upload-icon">🔐</div>
+                <input type="file" id="pyFileInput" accept=".py,text/x-python,text/plain" />
+                <label for="pyFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="py.pick">pilih file .py</label>
+                <div class="file-name" id="pyFileName" data-i18n="py.upload_hint">upload 1 file .py ke sini</div>
+                <div class="file-size" id="pyFileSize"></div>
+            </div>
+
+            <div style="margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
+                <div class="login-field" style="margin-bottom:10px;">
+                    <label for="pyLayers" data-i18n="py.layers">Jumlah layer XOR/ROL (1–99)</label>
+                    <input type="number" id="pyLayers" min="1" max="99" value="16" style="max-width:120px;" />
+                </div>
+                <p class="admin-hint" style="margin:0;" data-i18n="py.layers_hint">Lebih banyak layer = lebih lambat encrypt/decrypt. Default 16 cukup kuat &amp; cepat.</p>
+            </div>
+
+            <div class="action-row" style="margin-top:8px;">
+                <button class="btn btn-primary" id="pyEncryptBtn" disabled data-i18n="py.encrypt">🔐 encrypt &amp; download</button>
+                <button class="btn" id="pyResetBtn" disabled data-i18n="btn.reset">↺ reset</button>
+            </div>
+
+            <div class="progress-wrap" id="pyProgressWrap" style="display:none; margin-top:14px;">
+                <div class="progress-bar" id="pyProgressBar"></div>
+                <div class="progress-text" id="pyProgressText">0%</div>
+            </div>
+
+            <div class="stats-grid" style="margin-top:16px;">
+                <div class="stat-item"><span class="label" data-i18n="stat.file">file</span><span class="value" id="pyStatFile">—</span></div>
+                <div class="stat-item"><span class="label" data-i18n="py.stat.size">ukuran</span><span class="value" id="pyStatSize">—</span></div>
+                <div class="stat-item"><span class="label" data-i18n="py.stat.layers">layers</span><span class="value" id="pyStatLayers">—</span></div>
+                <div class="stat-item"><span class="label" data-i18n="stat.status">status</span><span class="value" id="pyStatStatus">—</span></div>
+            </div>
+
+            <div id="pyResult" style="margin-top:14px; font-size:12px; color:var(--text-secondary); line-height:1.5;"></div>
         </div>
 
         <div class="footer" data-i18n="footer">semua proses di sini, tidak ada data yang dikirim ke mana pun</div>

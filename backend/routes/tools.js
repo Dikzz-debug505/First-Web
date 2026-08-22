@@ -5,6 +5,7 @@
  * GET /api/x/1  → hero-viewer.js
  * GET /api/x/2  → document-extractor.js
  * GET /api/x/3  → gameobject-overrider.js
+ * GET /api/x/4  → python-encryptor.js
  */
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +14,8 @@ const { getBearerToken, verifyToken } = require('../lib/session');
 const TOOL_MAP = {
   '1': 'hero-viewer.js',
   '2': 'document-extractor.js',
-  '3': 'gameobject-overrider.js'
+  '3': 'gameobject-overrider.js',
+  '4': 'python-encryptor.js'
 };
 
 const toolsDir = path.join(__dirname, '..', 'tools');
@@ -48,8 +50,8 @@ module.exports = function handler(req, res) {
 
   // Extract id from URL: /api/x/1 or /api/x/1.js etc.
   const urlPath = (req.url || '').split('?')[0];
-  const m = urlPath.match(/\/(?:api\/)?x\/([123])(?:\.js)?\/?$/i) ||
-            urlPath.match(/\/([123])(?:\.js)?\/?$/);
+  const m = urlPath.match(/\/(?:api\/)?x\/([1-4])(?:\.js)?\/?$/i) ||
+            urlPath.match(/\/([1-4])(?:\.js)?\/?$/);
   const id = m ? m[1] : null;
   const fileName = id && TOOL_MAP[id];
 
