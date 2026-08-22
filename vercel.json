@@ -54,5 +54,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "backend/tools/**"
+    }
+  }
 }

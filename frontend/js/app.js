@@ -1115,34 +1115,87 @@
 
 
             let toolsLoaded = false;
-            async function loadProtectedTools() {
-                if (toolsLoaded) return;
-                const token = getAdminToken();
-                if (!token) return;
-                // Obscure endpoints — no descriptive filenames exposed
-                const endpoints = ['/api/x/1', '/api/x/2', '/api/x/3', '/api/x/4'];
-                try {
-                    const blobs = await Promise.all(endpoints.map(async function (url) {
-                        const res = await fetch(url, {
+            function injectScriptText(code, label) {
+                return new Promise(function (resolve, reject) {
+                    try {
+                        const s = document.createElement('script');
+                        s.type = 'text/javascript';
+                        s.text = code;
+                        s.setAttribute('data-tool', label || '');
+                        document.head.appendChild(s);
+                        resolve(true);
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            }
+            function injectScriptSrc(src, label) {
+                return new Promise(function (resolve, reject) {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.async = false;
+                    s.setAttribute('data-tool', label || '');
+                    s.onload = function () { resolve(true); };
+                    s.onerror = function () { reject(new Error('script ' + src)); };
+                    document.head.appendChild(s);
+                });
+            }
+            async function loadOneTool(id, token) {
+                // 1) API auth endpoint
+                if (token) {
+                    try {
+                        const res = await fetch('/api/x/' + id, {
                             method: 'GET',
                             headers: { 'Authorization': 'Bearer ' + token },
                             cache: 'no-store'
                         });
-                        if (!res.ok) throw new Error('tool load ' + res.status);
-                        return res.blob();
-                    }));
-                    blobs.forEach(function (blob) {
-                        const u = URL.createObjectURL(blob);
-                        const s = document.createElement('script');
-                        s.src = u;
-                        s.async = false;
-                        document.head.appendChild(s);
-                        // revoke after load to reduce residual traces
-                        s.onload = function () { try { URL.revokeObjectURL(u); } catch (e) {} };
-                    });
+                        if (res.ok) {
+                            const ct = (res.headers.get('content-type') || '').toLowerCase();
+                            const text = await res.text();
+                            if (text && text.length > 50 && text.indexOf('ok: false') === -1) {
+                                // prefer text inject (works even if blob MIME odd)
+                                await injectScriptText(text, 'x' + id);
+                                return 'api';
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('tool api', id, e);
+                    }
+                }
+                // 2) Static fallback (after login only — caller ensures session)
+                try {
+                    await injectScriptSrc('js/tools/' + id + '.js?v=202608221200', 'x' + id);
+                    return 'static';
+                } catch (e2) {
+                    console.warn('tool static', id, e2);
+                    throw e2;
+                }
+            }
+            async function loadProtectedTools() {
+                if (toolsLoaded) return;
+                const token = getAdminToken();
+                // Tanpa token tetap coba static agar upload tidak mati total di edge case session
+                const ids = ['1', '2', '3', '4'];
+                let ok = 0;
+                const errors = [];
+                for (let i = 0; i < ids.length; i++) {
+                    try {
+                        await loadOneTool(ids[i], token);
+                        ok++;
+                    } catch (e) {
+                        errors.push(ids[i]);
+                    }
+                }
+                if (ok > 0) {
                     toolsLoaded = true;
-                } catch (err) {
-                    console.warn('tools unavailable');
+                    if (errors.length && typeof showToast === 'function') {
+                        showToast('⚠️ Sebagian tools gagal dimuat: ' + errors.join(','), 'warning');
+                    }
+                } else {
+                    console.warn('tools unavailable', errors);
+                    if (typeof showToast === 'function') {
+                        showToast('❌ Tools gagal dimuat — upload tidak aktif. Refresh / login ulang.', 'error');
+                    }
                 }
             }
 

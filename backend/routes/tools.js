@@ -18,10 +18,30 @@ const TOOL_MAP = {
   '4': 'python-encryptor.js'
 };
 
-const toolsDir = path.join(__dirname, '..', 'tools');
+/** Resolve tool file across local / Vercel layouts */
+function resolveToolPath(fileName) {
+  const candidates = [
+    path.join(__dirname, '..', 'tools', fileName),
+    path.join(process.cwd(), 'backend', 'tools', fileName),
+    path.join(process.cwd(), 'tools', fileName),
+    // static fallback copies (same source)
+    path.join(process.cwd(), 'frontend', 'js', 'tools', fileName.replace('hero-viewer.js', '1.js').replace('document-extractor.js', '2.js').replace('gameobject-overrider.js', '3.js').replace('python-encryptor.js', '4.js')),
+    path.join(__dirname, '..', '..', 'frontend', 'js', 'tools', ({
+      'hero-viewer.js': '1.js',
+      'document-extractor.js': '2.js',
+      'gameobject-overrider.js': '3.js',
+      'python-encryptor.js': '4.js'
+    })[fileName] || fileName)
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    try {
+      if (candidates[i] && fs.existsSync(candidates[i])) return candidates[i];
+    } catch (_) {}
+  }
+  return null;
+}
 
 module.exports = function handler(req, res) {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -38,7 +58,6 @@ module.exports = function handler(req, res) {
     return;
   }
 
-  // Require valid session token
   const token = getBearerToken(req);
   const sess = verifyToken(token);
   if (!sess) {
@@ -48,7 +67,6 @@ module.exports = function handler(req, res) {
     return;
   }
 
-  // Extract id from URL: /api/x/1 or /api/x/1.js etc.
   const urlPath = (req.url || '').split('?')[0];
   const m = urlPath.match(/\/(?:api\/)?x\/([1-4])(?:\.js)?\/?$/i) ||
             urlPath.match(/\/([1-4])(?:\.js)?\/?$/);
@@ -62,19 +80,27 @@ module.exports = function handler(req, res) {
     return;
   }
 
-  const filePath = path.join(toolsDir, fileName);
-  if (!fs.existsSync(filePath)) {
+  const filePath = resolveToolPath(fileName);
+  if (!filePath) {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ ok: false, message: 'Not found' }));
+    res.end(JSON.stringify({ ok: false, message: 'Tool file missing on server' }));
     return;
   }
 
-  // Serve as JS, discourage caching & path guessing
+  let code;
+  try {
+    code = fs.readFileSync(filePath, 'utf8');
+  } catch (e) {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ ok: false, message: 'Failed to read tool' }));
+    return;
+  }
+
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Content-Disposition', 'inline; filename="t.js"'); // generic name
   res.statusCode = 200;
-  fs.createReadStream(filePath).pipe(res);
+  res.end(code);
 };
