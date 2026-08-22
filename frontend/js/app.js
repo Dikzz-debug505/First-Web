@@ -24,14 +24,24 @@
     };
 
     window.validateLocalFile = function (file, extensions) {
-        if (!file) throw new Error(t('js.file_not_chosen'));
+        function msg(key, fallback) {
+            try {
+                if (window.MLBB_i18n && typeof window.MLBB_i18n.t === 'function') {
+                    const m = window.MLBB_i18n.t(key);
+                    if (m && m !== key) return m;
+                }
+            } catch (e) {}
+            return fallback || key;
+        }
+        if (!file) throw new Error(msg('js.file_not_chosen', 'file tidak dipilih'));
         if (file.size > SECURITY.MAX_BYTES_FILE) {
-            throw new Error(t('js.file_too_big'));
+            throw new Error(msg('js.file_too_big', 'file terlalu besar (maks. 512 MB)'));
         }
         const name = String(file.name || '');
         const lower = name.toLowerCase();
-        if (!extensions.some(ext => lower.endsWith(ext))) {
-            throw new Error('jenis file tidak didukung');
+        const list = Array.isArray(extensions) ? extensions : [];
+        if (list.length && !list.some(function (ext) { return lower.endsWith(String(ext).toLowerCase()); })) {
+            throw new Error(msg('js.file_unsupported', 'jenis file tidak didukung'));
         }
         return true;
     };
@@ -52,6 +62,7 @@
             let toastTimer = null;
 
             function showToast(msg, type = 'info') {
+                if (!toast) return;
                 if (toastTimer) clearTimeout(toastTimer);
                 toast.textContent = msg;
                 toast.className = 'toast ' + type;
@@ -61,6 +72,8 @@
                     toast.classList.remove('show');
                 }, 4500);
             }
+            // Tools (/api/x/*) butuh global — jangan hapus
+            window.showToast = showToast;
 
             const MUSIC_PREF_KEY = 'mlbb_bgm_enabled';
             const MUSIC_TRACK_KEY = 'mlbb_bgm_track';
@@ -377,6 +390,8 @@
                 } catch (e) {}
                 return key;
             }
+            // Tools (/api/x/*) memanggil t() sebagai global
+            window.t = t;
             /** Translate known Indonesian UI literals when English is active */
             function tr(idText, enText) {
                 try {
