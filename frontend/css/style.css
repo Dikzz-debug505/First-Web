@@ -2043,3 +2043,77 @@ select:focus:not(:focus-visible) {
     }
     .login-overlay .login-card { max-width: 300px; }
 }
+
+/* ---------- Post-login animated background (mp4 video) ---------- */
+.app-bg-video {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 1.1s var(--ease-soft, ease), visibility 1.1s var(--ease-soft, ease);
+    background: var(--bg-primary);
+}
+
+body.is-logged-in .app-bg-video {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Soften static body gradients once video bg is active */
+body.is-logged-in {
+    background: var(--bg-primary);
+}
+
+body.is-logged-in::before {
+    opacity: 0.02;
+}
+
+/* Dim overlay so UI stays readable over the video */
+body.is-logged-in::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 90% 70% at 50% 40%, rgba(3, 6, 12, 0.35), rgba(3, 6, 12, 0.72) 75%),
+        rgba(3, 6, 12, 0.28);
+}
+
+/* Smooth entrance for main / admin panels after login */
+#mainApp.app-enter,
+#adminApp.app-enter {
+    animation: appPanelEnter 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes appPanelEnter {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+        filter: blur(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-bg-video {
+        transition: none;
+    }
+    body.is-logged-in .app-bg-video {
+        opacity: 0.45;
+    }
+    #mainApp.app-enter,
+    #adminApp.app-enter {
+        animation: none;
+    }
+}

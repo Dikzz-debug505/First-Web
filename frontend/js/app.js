@@ -1199,6 +1199,38 @@
                 }
             }
 
+            /* ---- Post-login animated background (mp4 video) ---- */
+            const appBgVideo = document.getElementById('appBgVideo');
+
+            function startAppBgAnim() {
+                document.body.classList.add('is-logged-in');
+                if (!appBgVideo) return;
+                try {
+                    appBgVideo.muted = true;
+                    appBgVideo.loop = true;
+                    appBgVideo.playsInline = true;
+                    const p = appBgVideo.play();
+                    if (p && typeof p.catch === 'function') p.catch(function () { /* autoplay blocked */ });
+                } catch (e) { /* ignore */ }
+            }
+
+            function stopAppBgAnim() {
+                document.body.classList.remove('is-logged-in');
+                if (!appBgVideo) return;
+                try {
+                    appBgVideo.pause();
+                    appBgVideo.currentTime = 0;
+                } catch (e) { /* ignore */ }
+            }
+
+            function triggerAppEnter(el) {
+                if (!el) return;
+                el.classList.remove('app-enter');
+                // force reflow so animation restarts
+                void el.offsetWidth;
+                el.classList.add('app-enter');
+            }
+
             function showMainApp(username, skipOverlayHide) {
                 currentSessionUser = username;
                 currentIsAdmin = false;
@@ -1209,6 +1241,8 @@
                     loginOverlay.classList.add('hidden');
                     loginOverlay.classList.remove('fade-out');
                 }
+                startAppBgAnim();
+                triggerAppEnter(mainApp);
                 if (typeof window.MLBB_showMusicFloat === 'function') window.MLBB_showMusicFloat();
                 initTutorialAfterLogin();
                 bgmPlay(true);
@@ -1249,6 +1283,8 @@
                     loginOverlay.classList.add('hidden');
                     loginOverlay.classList.remove('fade-out');
                 }
+                startAppBgAnim();
+                triggerAppEnter(adminApp);
                 if (typeof window.MLBB_showMusicFloat === 'function') window.MLBB_showMusicFloat();
                 renderAdminUserTable();
                 if (currentIsSuper) {
@@ -1275,8 +1311,15 @@
                 if (loginOverlay) {
                     loginOverlay.classList.remove('hidden', 'fade-out');
                 }
-                if (mainApp) mainApp.style.display = 'none';
-                if (adminApp) adminApp.style.display = 'none';
+                if (mainApp) {
+                    mainApp.style.display = 'none';
+                    mainApp.classList.remove('app-enter');
+                }
+                if (adminApp) {
+                    adminApp.style.display = 'none';
+                    adminApp.classList.remove('app-enter');
+                }
+                stopAppBgAnim();
                 if (typeof window.MLBB_hideMusicFloat === 'function') window.MLBB_hideMusicFloat();
                 if (loginError) {
                     loginError.style.display = 'none';
