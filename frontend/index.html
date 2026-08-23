@@ -412,23 +412,45 @@
         <div class="menu-panel" id="panel-py">
 
             <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
-                <span data-i18n-html="py.desc">Enkripsi file <strong>.py</strong> jadi skrip self-decrypt (AES-256 + multi-layer XOR/ROL). Semua proses di browser — file tidak diunggah ke server. Butuh <code>pycryptodome</code> saat dijalankan.</span>
+                <span data-i18n-html="py.desc" id="pyDescText">Enkripsi file <strong>.py</strong> jadi skrip self-decrypt (AES-256 + multi-layer XOR/ROL). Semua proses di browser — file tidak diunggah ke server. Butuh <code>pycryptodome</code> saat dijalankan.</span>
             </p>
+
+            <div style="margin:0 0 14px; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
+                <div class="login-field" style="margin-bottom:0;">
+                    <label for="pyEncType">Jenis enkripsi</label>
+                    <select id="pyEncType" style="max-width:280px;">
+                        <option value="py">Enc Py</option>
+                        <option value="shell">Enc Shell</option>
+                        <option value="js">Obfus Javascript</option>
+                    </select>
+                </div>
+            </div>
 
             <div class="upload-zone" id="pyDropZone">
                 <div class="upload-icon">🔐</div>
                 <input type="file" id="pyFileInput" accept=".py,text/x-python,text/plain" />
-                <label for="pyFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="py.pick">pilih file .py</label>
+                <label for="pyFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;" data-i18n="py.pick" id="pyPickLabel">pilih file .py</label>
                 <div class="file-name" id="pyFileName" data-i18n="py.upload_hint">upload 1 file .py ke sini</div>
                 <div class="file-size" id="pyFileSize"></div>
             </div>
 
-            <div style="margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
+            <div id="pyLayersBox" style="margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
                 <div class="login-field" style="margin-bottom:10px;">
                     <label for="pyLayers" data-i18n="py.layers">Jumlah layer XOR/ROL (1–99)</label>
                     <input type="number" id="pyLayers" min="1" max="99" value="16" style="max-width:120px;" />
                 </div>
                 <p class="admin-hint" style="margin:0;" data-i18n="py.layers_hint">Lebih banyak layer = lebih lambat encrypt/decrypt. Default 16 cukup kuat &amp; cepat.</p>
+            </div>
+
+            <div id="pyShellWmBox" style="display:none; margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
+                <div class="login-field" style="margin-bottom:10px;">
+                    <label for="pyShellAuthor">Encoded by (watermark)</label>
+                    <input type="text" id="pyShellAuthor" value="ZALL XD" maxlength="64" style="max-width:280px;" placeholder="ZALL XD" />
+                </div>
+                <div class="login-field" style="margin-bottom:0;">
+                    <label for="pyShellTelegram">Telegram (watermark)</label>
+                    <input type="text" id="pyShellTelegram" value="https://t.me/GegeWepeYT" maxlength="120" style="max-width:280px;" placeholder="https://t.me/..." />
+                </div>
             </div>
 
             <div class="action-row" style="margin-top:8px;">

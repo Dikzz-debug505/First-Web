@@ -172,8 +172,8 @@
                     }
 
                     const start = heroStarts[heroIndex];
-                    const end = (heroIndex + 1 < totalHeroes) ? heroStarts[heroIndex + 1] : Math.min(data.length, start +
-                        2048);
+                    // Samakan dengan dump.py: next hero_ atau start+1500
+                    const end = (heroIndex + 1 < totalHeroes) ? heroStarts[heroIndex + 1] : Math.min(data.length, start + 1500);
 
                     let nameEnd = start + pattern.length;
                     while (nameEnd < data.length && (
@@ -184,14 +184,18 @@
                         )) { nameEnd++; }
                     const heroName = new TextDecoder('utf-8').decode(data.slice(start, nameEnd));
 
+                    // Dump kandidat stat: step 2, Int32 + Float32 LE, rentang 10–3500 (sama dump.py)
                     const values = [];
-                    for (let off = start; off < end - 3; off += 1) {
+                    for (let off = start; off < end - 3; off += 2) {
                         const chunk = data.slice(off, off + 4);
                         if (chunk.length !== 4) continue;
-                        const intVal = chunk[0] | (chunk[1] << 8) | (chunk[2] << 16) | (chunk[3] << 24);
+                        // Signed Int32 little-endian (struct.unpack '<i')
+                        let intVal = chunk[0] | (chunk[1] << 8) | (chunk[2] << 16) | (chunk[3] << 24);
+                        if (intVal > 0x7FFFFFFF) intVal -= 0x100000000;
+                        // Float32 little-endian (struct.unpack '<f')
                         const floatVal = new DataView(chunk.buffer, chunk.byteOffset).getFloat32(0, true);
                         const isValidInt = (intVal >= MIN_VAL && intVal <= MAX_VAL);
-                        const isValidFloat = (floatVal >= MIN_VAL && floatVal <= MAX_VAL && !isNaN(floatVal));
+                        const isValidFloat = (floatVal >= MIN_VAL && floatVal <= MAX_VAL && floatVal === floatVal);
                         if (isValidInt || isValidFloat) {
                             values.push({
                                 offset: off,

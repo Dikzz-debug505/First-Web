@@ -1,13 +1,16 @@
 (function () {
     "use strict";
-    // Python Encrypted — client-side port of enc.py pipeline
-    // (AES-256-CBC + multi-layer XOR/ROL + zlib-style deflate via CompressionStream)
+    // Encryption panel — Enc Py / Enc Shell / Obfus Javascript (client-side)
 
     const pyFileInput = document.getElementById('pyFileInput');
     const pyDropZone = document.getElementById('pyDropZone');
     const pyFileName = document.getElementById('pyFileName');
     const pyFileSize = document.getElementById('pyFileSize');
     const pyLayers = document.getElementById('pyLayers');
+    const pyLayersBox = document.getElementById('pyLayersBox');
+    const pyShellWmBox = document.getElementById('pyShellWmBox');
+    const pyShellAuthor = document.getElementById('pyShellAuthor');
+    const pyShellTelegram = document.getElementById('pyShellTelegram');
     const pyEncryptBtn = document.getElementById('pyEncryptBtn');
     const pyResetBtn = document.getElementById('pyResetBtn');
     const pyProgressWrap = document.getElementById('pyProgressWrap');
@@ -18,10 +21,46 @@
     const pyStatLayers = document.getElementById('pyStatLayers');
     const pyStatStatus = document.getElementById('pyStatStatus');
     const pyResult = document.getElementById('pyResult');
+    const pyEncType = document.getElementById('pyEncType');
+    const pyDescText = document.getElementById('pyDescText');
+    const pyPickLabel = document.getElementById('pyPickLabel');
 
     let pySource = null;
     let pyOrigName = '';
     let pyBusy = false;
+
+    const MODE_META = {
+        py: {
+            accept: '.py,text/x-python,text/plain',
+            ext: ['.py'],
+            pick: 'pilih file .py',
+            hint: 'upload 1 file .py ke sini',
+            desc: 'Enkripsi file <strong>.py</strong> jadi skrip self-decrypt (AES-256 + multi-layer XOR/ROL). Semua proses di browser — file tidak diunggah ke server. Butuh <code>pycryptodome</code> saat dijalankan.',
+            showLayers: true,
+            showShellWm: false,
+            maxSize: 2 * 1024 * 1024
+        },
+        shell: {
+            accept: '.sh,text/x-shellscript,text/plain',
+            ext: ['.sh', '.bash'],
+            pick: 'pilih file .sh',
+            hint: 'upload 1 file .sh ke sini',
+            desc: 'Obfuscate file <strong>.sh</strong> gaya ZALL XD (variabel acak + eval concatenasi). Semua proses di browser — file tidak diunggah ke server.',
+            showLayers: false,
+            showShellWm: true,
+            maxSize: 2 * 1024 * 1024
+        },
+        js: {
+            accept: '.js,.mjs,.cjs,text/javascript,application/javascript,text/plain',
+            ext: ['.js', '.mjs', '.cjs'],
+            pick: 'pilih file .js',
+            hint: 'upload 1 file .js ke sini',
+            desc: 'Obfuscate / minify file <strong>.js</strong> (string array, identifier mangle, control-flow light). Semua proses di browser — file tidak diunggah ke server.',
+            showLayers: false,
+            showShellWm: false,
+            maxSize: 3 * 1024 * 1024
+        }
+    };
 
     function t(key, vars) {
         if (window.MLBB_i18n && typeof MLBB_i18n.t === 'function') return MLBB_i18n.t(key, vars);
@@ -42,6 +81,24 @@
         if (n < 1024) return n + ' B';
         if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
         return (n / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+    function currentMode() {
+        return (pyEncType && pyEncType.value) || 'py';
+    }
+
+    function applyModeUI() {
+        const mode = currentMode();
+        const meta = MODE_META[mode] || MODE_META.py;
+        if (pyFileInput) pyFileInput.accept = meta.accept;
+        if (pyPickLabel) pyPickLabel.textContent = meta.pick;
+        if (pyDescText) pyDescText.innerHTML = meta.desc;
+        if (pyLayersBox) pyLayersBox.style.display = meta.showLayers ? '' : 'none';
+        if (pyShellWmBox) pyShellWmBox.style.display = meta.showShellWm ? '' : 'none';
+        if (!pySource) {
+            if (pyFileName) pyFileName.textContent = meta.hint;
+        }
+        // reset file when switching type so wrong extension isn't kept
+        pyReset(true);
     }
 
     function randBytes(n) {
@@ -93,13 +150,12 @@
                 return out;
             } catch (e) { /* fall through */ }
         }
-        // Fallback: no compression
         return u8;
     }
 
     async function aesEncryptCbc(keyU8, ivU8, plainU8) {
         const key = await crypto.subtle.importKey('raw', keyU8, { name: 'AES-CBC' }, false, ['encrypt']);
-        // Web Crypto expects PKCS7 padding automatically for AES-CBC
+        // Web Crypto applies PKCS7 padding automatically for AES-CBC
         const ct = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: ivU8 }, key, plainU8);
         return new Uint8Array(ct);
     }
@@ -112,9 +168,8 @@
     }
 
     function toPyBytesList(u8) {
-        // Compact list for embedding in generated .py
         const parts = [];
-        for (let i = 0; i < u8.length; i++) parts.push(String(u8[i]));
+        for (let i = 0; i < u8.length; i++) parts.push(u8[i]);
         return '[' + parts.join(',') + ']';
     }
 
@@ -125,6 +180,7 @@
         }).join('');
     }
 
+    // ── Enc Py (existing pipeline) ──────────────────────────────────────────
     async function buildEncryptedPy(sourceText, layers) {
         const encoder = new TextEncoder();
         const raw = encoder.encode(sourceText);
@@ -132,7 +188,6 @@
 
         setProgress(10, 'compress');
         let data = await deflateRaw(raw);
-        const usedDeflate = data.length !== raw.length || layers > 0;
 
         setProgress(25, 'layers');
         const flatLayers = [];
@@ -170,10 +225,6 @@
         const loopK = cjkName(4), loopS = cjkName(4), storeVar = cjkName(5);
         const hash1 = integrity.slice(0, Math.floor(integrity.length / 2));
         const hash2 = integrity.slice(Math.floor(integrity.length / 2));
-
-        // Loader uses zlib.decompress for deflate-wrapped data when CompressionStream used.
-        // CompressionStream('deflate') produces zlib-wrapped deflate in Chromium/Firefox.
-        // Fallback path: if lengths equal and we still layered, data is still processed.
 
         setProgress(75, 'template');
         const template = `#!/usr/bin/env python3
@@ -254,20 +305,306 @@ if __name__ == "__main__":
             layers: layers,
             inSize: raw.length,
             outSize: template.length,
-            integrity: integrity,
-            usedDeflate: usedDeflate
+            integrity: integrity
         };
     }
 
+    // ── Enc Shell (ZALL XD style — port of enc.py) ──────────────────────────
+    function shellGenerateVarName(existing) {
+        const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const reserved = {
+            ifz: 1, thenz: 1, elsez: 1, fiz: 1, doz: 1, donez: 1, forz: 1,
+            whilez: 1, casez: 1, esacz: 1, inz: 1, selectz: 1, untilz: 1,
+            functionz: 1, timez: 1, coprocz: 1, eqz: 1, nez: 1, trz: 1
+        };
+        for (;;) {
+            const len = randInt(2, 5);
+            let prefix = '';
+            for (let i = 0; i < len; i++) prefix += letters[randInt(0, letters.length - 1)];
+            const name = prefix + 'z';
+            if (reserved[name.toLowerCase()]) continue;
+            if (!existing[name] && !/^\d/.test(name)) {
+                existing[name] = 1;
+                return name;
+            }
+        }
+    }
+
+    function shellEscapeSingle(s) {
+        return String(s).replace(/'/g, "'\\''");
+    }
+
+    function shellSplitChunks(text, minLen, maxLen) {
+        const chunks = [];
+        let i = 0;
+        const n = text.length;
+        while (i < n) {
+            if (text[i] === '\n') {
+                chunks.push('__NL__');
+                i++;
+                continue;
+            }
+            const remaining = n - i;
+            let length = randInt(minLen, Math.min(maxLen, remaining));
+            let chunk = text.slice(i, i + length);
+            if (chunk.indexOf('\n') !== -1) {
+                const pos = chunk.indexOf('\n');
+                if (pos === 0) {
+                    chunks.push('__NL__');
+                    i++;
+                    continue;
+                }
+                chunk = chunk.slice(0, pos);
+                length = pos;
+            }
+            if (chunk) chunks.push(chunk);
+            i += length;
+        }
+        return chunks;
+    }
+
+    function buildEncryptedShell(sourceText, author, telegram) {
+        let content = sourceText;
+        if (!content.endsWith('\n')) content += '\n';
+
+        const wmAuthor = (author && String(author).trim()) || 'ZALL XD';
+        const wmTelegram = (telegram && String(telegram).trim()) || 'https://t.me/GegeWepeYT';
+
+        setProgress(15, 'chunk');
+        const chunks = shellSplitChunks(content, 1, 6);
+        const used = { z: 1 };
+        const varMap = [];
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            if (chunk === '__NL__') {
+                varMap.push({ name: 'z', value: null });
+            } else {
+                varMap.push({ name: shellGenerateVarName(used), value: chunk });
+            }
+        }
+
+        setProgress(50, 'vars');
+        const lines = [];
+        lines.push('# Encoded by ' + wmAuthor);
+        lines.push('# Telegram- ' + wmTelegram);
+        lines.push('');
+        lines.push('z="');
+        lines.push('";');
+
+        const assignments = [];
+        for (let i = 0; i < varMap.length; i++) {
+            const v = varMap[i];
+            if (v.value === null) continue;
+            assignments.push(v.name + "='" + shellEscapeSingle(v.value) + "'");
+        }
+
+        const batchSize = 55;
+        for (let i = 0; i < assignments.length; i += batchSize) {
+            lines.push(assignments.slice(i, i + batchSize).join(';'));
+        }
+
+        setProgress(80, 'eval');
+        const evalParts = [];
+        for (let i = 0; i < varMap.length; i++) {
+            evalParts.push('$' + varMap[i].name);
+        }
+        lines.push('eval "' + evalParts.join('') + '"');
+
+        const text = lines.join('\n') + '\n';
+        setProgress(95, 'done');
+        return {
+            text: text,
+            layers: 0,
+            inSize: sourceText.length,
+            outSize: text.length,
+            integrity: '',
+            varCount: assignments.length
+        };
+    }
+
+    // ── Obfus Javascript (client-side light/medium style) ────────────────────
+    function jsSimpleMinify(source) {
+        // strip block comments
+        source = source.replace(/\/\*[\s\S]*?\*\//g, '');
+        // strip line comments (avoid matching http://)
+        source = source.replace(/(^|[^:])\/\/.*?$/gm, '$1');
+        source = source.replace(/[ \t]+/g, ' ');
+        source = source.replace(/\n\s*\n+/g, '\n');
+        source = source.replace(/\n +|\n+/g, '\n');
+        source = source.replace(/\s*([{};,=+\-*/<>!&|?:])\s*/g, '$1');
+        const keywords = [
+            'return', 'typeof', 'delete', 'throw', 'new', 'var', 'let', 'const',
+            'function', 'if', 'else', 'for', 'while', 'do', 'switch', 'case',
+            'break', 'continue', 'in', 'of', 'class', 'extends', 'import', 'export',
+            'from', 'async', 'await', 'yield'
+        ];
+        for (let i = 0; i < keywords.length; i++) {
+            const kw = keywords[i];
+            const re = new RegExp('\\b' + kw + '\\b(?=\\S)', 'g');
+            source = source.replace(re, kw + ' ');
+        }
+        return source.trim() + '\n';
+    }
+
+    function jsExtractStrings(source) {
+        const strings = [];
+        let out = '';
+        let i = 0;
+        const n = source.length;
+        while (i < n) {
+            const c = source[i];
+            if (c === '"' || c === "'" || c === '`') {
+                const quote = c;
+                let j = i + 1;
+                let escaped = false;
+                let val = '';
+                while (j < n) {
+                    const ch = source[j];
+                    if (escaped) {
+                        val += ch;
+                        escaped = false;
+                        j++;
+                        continue;
+                    }
+                    if (ch === '\\') {
+                        val += ch;
+                        escaped = true;
+                        j++;
+                        continue;
+                    }
+                    if (ch === quote) {
+                        j++;
+                        break;
+                    }
+                    // template ${ } — keep simple: treat whole as string body
+                    val += ch;
+                    j++;
+                }
+                const idx = strings.length;
+                strings.push({ quote: quote, value: source.slice(i + 1, j - 1) });
+                out += '__STR' + idx + '__';
+                i = j;
+                continue;
+            }
+            out += c;
+            i++;
+        }
+        return { code: out, strings: strings };
+    }
+
+    function jsMangleIdentifiers(code) {
+        // Collect local-ish identifiers (simple heuristic, avoid keywords)
+        const reserved = {
+            break: 1, case: 1, catch: 1, class: 1, const: 1, continue: 1, debugger: 1,
+            default: 1, delete: 1, do: 1, else: 1, export: 1, extends: 1, false: 1,
+            finally: 1, for: 1, function: 1, if: 1, import: 1, in: 1, instanceof: 1,
+            new: 1, null: 1, return: 1, super: 1, switch: 1, this: 1, throw: 1, true: 1,
+            try: 1, typeof: 1, var: 1, void: 1, while: 1, with: 1, yield: 1, let: 1,
+            static: 1, enum: 1, await: 1, async: 1, of: 1, undefined: 1, NaN: 1,
+            Infinity: 1, arguments: 1, eval: 1, window: 1, document: 1, console: 1,
+            Array: 1, Object: 1, String: 1, Number: 1, Boolean: 1, Math: 1, Date: 1,
+            JSON: 1, Promise: 1, Map: 1, Set: 1, Symbol: 1, Error: 1, RegExp: 1,
+            parseInt: 1, parseFloat: 1, isNaN: 1, isFinite: 1, encodeURIComponent: 1,
+            decodeURIComponent: 1, setTimeout: 1, setInterval: 1, clearTimeout: 1,
+            clearInterval: 1, require: 1, module: 1, exports: 1, global: 1, process: 1,
+            Buffer: 1, __dirname: 1, __filename: 1
+        };
+        const idRe = /\b([A-Za-z_$][\w$]*)\b/g;
+        const counts = Object.create(null);
+        let m;
+        while ((m = idRe.exec(code)) !== null) {
+            const id = m[1];
+            if (reserved[id]) continue;
+            if (/^__STR\d+__$/.test(id)) continue;
+            counts[id] = (counts[id] || 0) + 1;
+        }
+        // Only mangle identifiers that appear >= 2 times and look local
+        const map = Object.create(null);
+        let counter = 0;
+        function nextName() {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let n = counter++;
+            let s = '_';
+            do {
+                s += chars[n % chars.length];
+                n = Math.floor(n / chars.length);
+            } while (n > 0);
+            return s;
+        }
+        const ids = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+        for (let i = 0; i < ids.length; i++) {
+            const id = ids[i];
+            if (counts[id] < 2) continue;
+            if (id.length <= 2) continue;
+            map[id] = nextName();
+        }
+        // Replace whole-word
+        return code.replace(/\b([A-Za-z_$][\w$]*)\b/g, function (full, id) {
+            return map[id] || full;
+        });
+    }
+
+    function buildObfuscatedJs(sourceText) {
+        setProgress(10, 'minify');
+        let code = jsSimpleMinify(sourceText);
+
+        setProgress(35, 'strings');
+        const extracted = jsExtractStrings(code);
+        code = extracted.code;
+        const strings = extracted.strings;
+
+        setProgress(55, 'mangle');
+        code = jsMangleIdentifiers(code);
+
+        setProgress(75, 'string-array');
+        // Build string array + decoder (base64-ish custom)
+        const arrName = '_0x' + randInt(0x1000, 0xffff).toString(16);
+        const fnName = '_0x' + randInt(0x1000, 0xffff).toString(16);
+        const encoded = [];
+        for (let i = 0; i < strings.length; i++) {
+            // simple hex escape of UTF-16 code units for safety
+            const v = strings[i].value;
+            let hex = '';
+            for (let j = 0; j < v.length; j++) {
+                hex += v.charCodeAt(j).toString(16).padStart(4, '0');
+            }
+            encoded.push(hex);
+        }
+
+        // Restore string placeholders with decoder calls
+        code = code.replace(/__STR(\d+)__/g, function (_, idx) {
+            return fnName + '(' + idx + ')';
+        });
+
+        const header =
+            'var ' + arrName + '=' + JSON.stringify(encoded) + ';' +
+            'function ' + fnName + '(i){var s=' + arrName + '[i],o="";for(var k=0;k<s.length;k+=4)o+=String.fromCharCode(parseInt(s.substr(k,4),16));return o;}\n';
+
+        const text = header + code;
+        setProgress(95, 'done');
+        return {
+            text: text,
+            layers: 0,
+            inSize: sourceText.length,
+            outSize: text.length,
+            integrity: '',
+            strCount: strings.length
+        };
+    }
+
+    // ── File handling ───────────────────────────────────────────────────────
     function pyHandleFile(file) {
         if (!file) return;
+        const mode = currentMode();
+        const meta = MODE_META[mode] || MODE_META.py;
         const name = (file.name || '').toLowerCase();
-        if (!name.endsWith('.py')) {
-            pyToast('❌ File harus .py', 'error');
+        const okExt = meta.ext.some(function (e) { return name.endsWith(e); });
+        if (!okExt) {
+            pyToast('❌ File harus ' + meta.ext.join(' / '), 'error');
             return;
         }
-        if (file.size > 2 * 1024 * 1024) {
-            pyToast('❌ Maksimal 2 MB', 'error');
+        if (file.size > meta.maxSize) {
+            pyToast('❌ Maksimal ' + fmtSize(meta.maxSize), 'error');
             return;
         }
         const reader = new FileReader();
@@ -286,7 +623,7 @@ if __name__ == "__main__":
                 if (pyEncryptBtn) pyEncryptBtn.disabled = false;
                 if (pyResetBtn) pyResetBtn.disabled = false;
                 if (pyResult) pyResult.textContent = '';
-                pyToast('📂 File siap dienkripsi', 'info');
+                pyToast('📂 File siap', 'info');
             } catch (e) {
                 pyToast('❌ Gagal baca file: ' + e.message, 'error');
             }
@@ -297,12 +634,13 @@ if __name__ == "__main__":
         reader.readAsText(file, 'utf-8');
     }
 
-    function pyReset() {
+    function pyReset(silent) {
         pySource = null;
         pyOrigName = '';
         pyBusy = false;
         if (pyFileInput) pyFileInput.value = '';
-        if (pyFileName) pyFileName.textContent = t('py.upload_hint') || 'upload 1 file .py ke sini';
+        const meta = MODE_META[currentMode()] || MODE_META.py;
+        if (pyFileName) pyFileName.textContent = meta.hint;
         if (pyFileSize) pyFileSize.textContent = '';
         if (pyStatFile) pyStatFile.textContent = '—';
         if (pyStatSize) pyStatSize.textContent = '—';
@@ -315,30 +653,63 @@ if __name__ == "__main__":
         if (pyResetBtn) pyResetBtn.disabled = true;
         if (pyResult) pyResult.textContent = '';
         hideProgress();
+        if (!silent) { /* caller may toast */ }
     }
 
     async function pyDoEncrypt() {
         if (!pySource || pyBusy) return;
-        let layers = parseInt(pyLayers && pyLayers.value, 10);
-        if (isNaN(layers) || layers < 1) layers = 16;
-        if (layers > 99) layers = 99;
+        const mode = currentMode();
 
         pyBusy = true;
         if (pyEncryptBtn) {
             pyEncryptBtn.disabled = true;
-            pyEncryptBtn.textContent = '⏳ encrypting...';
+            pyEncryptBtn.textContent = '⏳ processing...';
         }
         if (pyStatStatus) {
-            pyStatStatus.textContent = 'encrypting...';
+            pyStatStatus.textContent = 'processing...';
             pyStatStatus.style.color = '#ffd166';
         }
-        if (pyStatLayers) pyStatLayers.textContent = String(layers);
         setProgress(5, 'start');
 
         try {
-            const result = await buildEncryptedPy(pySource, layers);
-            const outName = (pyOrigName || 'script.py').replace(/\.py$/i, '') + '_encrypted.py';
-            const blob = new Blob([result.text], { type: 'text/x-python;charset=utf-8' });
+            let result;
+            let outName;
+            let mime = 'text/plain;charset=utf-8';
+            let resultHtml = '';
+
+            if (mode === 'py') {
+                let layers = parseInt(pyLayers && pyLayers.value, 10);
+                if (isNaN(layers) || layers < 1) layers = 16;
+                if (layers > 99) layers = 99;
+                if (pyStatLayers) pyStatLayers.textContent = String(layers);
+                result = await buildEncryptedPy(pySource, layers);
+                outName = (pyOrigName || 'script.py').replace(/\.py$/i, '') + '_encrypted.py';
+                mime = 'text/x-python;charset=utf-8';
+                resultHtml =
+                    '✅ <strong>' + outName + '</strong> siap dijalankan dengan Python 3 + <code>pycryptodome</code>.<br>' +
+                    'SHA-256 source: <code style="font-size:11px;">' + result.integrity.slice(0, 16) + '…</code> · layers: ' + result.layers;
+            } else if (mode === 'shell') {
+                if (pyStatLayers) pyStatLayers.textContent = '—';
+                const author = pyShellAuthor ? pyShellAuthor.value : 'ZALL XD';
+                const telegram = pyShellTelegram ? pyShellTelegram.value : 'https://t.me/GegeWepeYT';
+                result = buildEncryptedShell(pySource, author, telegram);
+                outName = (pyOrigName || 'script.sh').replace(/\.sh$/i, '') + '_enc.sh';
+                mime = 'text/x-shellscript;charset=utf-8';
+                resultHtml =
+                    '✅ <strong>' + outName + '</strong> — ZALL XD style (eval + random vars).<br>' +
+                    'Variabel: ' + (result.varCount || 0);
+            } else {
+                if (pyStatLayers) pyStatLayers.textContent = '—';
+                result = buildObfuscatedJs(pySource);
+                const base = (pyOrigName || 'app.js').replace(/\.(js|mjs|cjs)$/i, '');
+                outName = base + '.obf.js';
+                mime = 'application/javascript;charset=utf-8';
+                resultHtml =
+                    '✅ <strong>' + outName + '</strong> — minify + string array + identifier mangle.<br>' +
+                    'Strings encoded: ' + (result.strCount || 0);
+            }
+
+            const blob = new Blob([result.text], { type: mime });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -350,22 +721,18 @@ if __name__ == "__main__":
 
             setProgress(100, 'done');
             if (pyStatStatus) {
-                pyStatStatus.textContent = 'encrypted';
+                pyStatStatus.textContent = 'done';
                 pyStatStatus.style.color = '#34d399';
             }
             if (pyStatSize) pyStatSize.textContent = fmtSize(result.inSize) + ' → ' + fmtSize(result.outSize);
-            if (pyResult) {
-                pyResult.innerHTML =
-                    '✅ <strong>' + outName + '</strong> siap dijalankan dengan Python 3 + <code>pycryptodome</code>.<br>' +
-                    'SHA-256 source: <code style="font-size:11px;">' + result.integrity.slice(0, 16) + '…</code> · layers: ' + result.layers;
-            }
+            if (pyResult) pyResult.innerHTML = resultHtml;
             pyToast('⬇️ ' + outName + ' diunduh', 'success');
         } catch (e) {
             if (pyStatStatus) {
                 pyStatStatus.textContent = 'error';
                 pyStatStatus.style.color = '#ff6b7a';
             }
-            pyToast('❌ Encrypt gagal: ' + (e && e.message ? e.message : e), 'error');
+            pyToast('❌ Gagal: ' + (e && e.message ? e.message : e), 'error');
         } finally {
             pyBusy = false;
             if (pyEncryptBtn) {
@@ -376,6 +743,13 @@ if __name__ == "__main__":
         }
     }
 
+    // ── Events ──────────────────────────────────────────────────────────────
+    if (pyEncType) {
+        pyEncType.addEventListener('change', function () {
+            applyModeUI();
+            pyToast('Mode: ' + (MODE_META[currentMode()] ? currentMode() : 'py'), 'info');
+        });
+    }
     if (pyFileInput) {
         pyFileInput.addEventListener('change', function () {
             if (pyFileInput.files && pyFileInput.files[0]) pyHandleFile(pyFileInput.files[0]);
@@ -406,5 +780,12 @@ if __name__ == "__main__":
         pyStatStatus.textContent = t('js.wait_upload') || 'menunggu upload';
         pyStatStatus.style.color = '#8b9cb3';
     }
-    pyToast('🔐 Upload .py untuk enkripsi', 'info');
+
+    // init mode UI (don't force reset toast)
+    {
+        const meta = MODE_META[currentMode()] || MODE_META.py;
+        if (pyLayersBox) pyLayersBox.style.display = meta.showLayers ? '' : 'none';
+        if (pyShellWmBox) pyShellWmBox.style.display = meta.showShellWm ? '' : 'none';
+    }
+    pyToast('🔐 Pilih jenis enkripsi & upload file', 'info');
 })();
