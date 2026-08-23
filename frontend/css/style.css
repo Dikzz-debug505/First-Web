@@ -694,7 +694,7 @@ body::before {
     position: fixed;
     inset: 0;
     z-index: 10000;
-    background: var(--bg-primary);
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1796,7 +1796,7 @@ select:focus:not(:focus-visible) {
     --cord-l: calc((38 + var(--lamp-on) * 52) * 1%);
     --lamp-ease: 0.88s cubic-bezier(0.22, 1, 0.36, 1);
 
-    background: #07000d !important;
+    background: transparent !important;
     flex-direction: column;
     overflow: hidden;
 }
@@ -2044,7 +2044,7 @@ select:focus:not(:focus-visible) {
     .login-overlay .login-card { max-width: 300px; }
 }
 
-/* ---------- Post-login animated background (mp4 video) ---------- */
+/* ---------- Global animated background (mp4 video) — login + app ---------- */
 .app-bg-video {
     position: fixed;
     inset: 0;
@@ -2054,36 +2054,29 @@ select:focus:not(:focus-visible) {
     object-position: center center;
     z-index: 0;
     pointer-events: none;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 1.1s var(--ease-soft, ease), visibility 1.1s var(--ease-soft, ease);
-    background: var(--bg-primary);
-}
-
-body.is-logged-in .app-bg-video {
     opacity: 1;
     visibility: visible;
-}
-
-/* Soften static body gradients once video bg is active */
-body.is-logged-in {
     background: var(--bg-primary);
 }
 
-body.is-logged-in::before {
+html, body {
+    background: var(--bg-primary);
+}
+
+body::before {
     opacity: 0.02;
 }
 
-/* Dim overlay so UI stays readable over the video */
-body.is-logged-in::after {
+/* Dim overlay so UI / login stay readable over the video */
+body::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
     background:
-        radial-gradient(ellipse 90% 70% at 50% 40%, rgba(3, 6, 12, 0.35), rgba(3, 6, 12, 0.72) 75%),
-        rgba(3, 6, 12, 0.28);
+        radial-gradient(ellipse 90% 70% at 50% 40%, rgba(3, 6, 12, 0.32), rgba(3, 6, 12, 0.68) 75%),
+        rgba(3, 6, 12, 0.25);
 }
 
 /* Smooth entrance for main / admin panels after login */
@@ -2107,9 +2100,6 @@ body.is-logged-in::after {
 
 @media (prefers-reduced-motion: reduce) {
     .app-bg-video {
-        transition: none;
-    }
-    body.is-logged-in .app-bg-video {
         opacity: 0.45;
     }
     #mainApp.app-enter,

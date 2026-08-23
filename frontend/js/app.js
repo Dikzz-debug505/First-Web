@@ -1199,11 +1199,10 @@
                 }
             }
 
-            /* ---- Post-login animated background (mp4 video) ---- */
+            /* ---- Global animated background (mp4 video) — login + app ---- */
             const appBgVideo = document.getElementById('appBgVideo');
 
-            function startAppBgAnim() {
-                document.body.classList.add('is-logged-in');
+            function playAppBgVideo() {
                 if (!appBgVideo) return;
                 try {
                     appBgVideo.muted = true;
@@ -1214,13 +1213,24 @@
                 } catch (e) { /* ignore */ }
             }
 
+            function startAppBgAnim() {
+                document.body.classList.add('is-logged-in');
+                playAppBgVideo();
+            }
+
             function stopAppBgAnim() {
                 document.body.classList.remove('is-logged-in');
-                if (!appBgVideo) return;
-                try {
-                    appBgVideo.pause();
-                    appBgVideo.currentTime = 0;
-                } catch (e) { /* ignore */ }
+                /* keep video playing on login screen */
+                playAppBgVideo();
+            }
+
+            /* start video as soon as possible (login page) */
+            playAppBgVideo();
+            if (appBgVideo) {
+                appBgVideo.addEventListener('loadeddata', playAppBgVideo);
+                document.addEventListener('visibilitychange', function () {
+                    if (!document.hidden) playAppBgVideo();
+                });
             }
 
             function triggerAppEnter(el) {
