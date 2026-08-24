@@ -6,6 +6,10 @@
       "destination": "/frontend/index.html"
     },
     {
+      "source": "/profile",
+      "destination": "/frontend/profile.html"
+    },
+    {
       "source": "/css/:path*",
       "destination": "/frontend/css/:path*"
     },
