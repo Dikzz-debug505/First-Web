@@ -2,7 +2,7 @@
   "name": "mlbb-unity-tools",
   "private": true,
   "version": "2.0.0",
-  "description": "MLBB Unity Tools)",
+  "description": "MLBB Unity Tools",
   "main": "backend/server.js",
   "scripts": {
     "dev": "node backend/server.js",

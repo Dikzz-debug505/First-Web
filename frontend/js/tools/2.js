@@ -42,15 +42,31 @@
             function updatePatchButton() {
                 const ready = docExtracted && docResCheckXML !== null && docBinaryPatchXML !== null;
                 docPatchBtn.disabled = !ready;
+                docPackBtn.disabled = !ready;
                 if (ready) {
                     docPatchBtn.title = 'Patch siap dijalankan';
+                    docPackBtn.title = 'Auto-patch XML lalu download ketiga file';
                 } else {
                     const missing = [];
                     if (!docExtracted) missing.push(t('js.not_extracted'));
                     if (!docResCheckXML) missing.push('ResCheckConf.xml');
                     if (!docBinaryPatchXML) missing.push('BinaryPatchMD5.xml');
-                    docPatchBtn.title = 'Butuh: ' + missing.join(', ');
+                    const msg = 'Butuh: ' + missing.join(', ');
+                    docPatchBtn.title = msg;
+                    docPackBtn.title = msg;
                 }
+            }
+
+            function downloadBlob(data, filename, mime) {
+                const blob = new Blob([data], { type: mime || 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1500);
             }
 
             function docHandleFile(file) {
@@ -227,7 +243,6 @@
                         docStatFile.textContent = 'Document.unity3d';
                         docStatStatus.textContent = 'extracted (' + entries.length + ' files)';
                         docStatStatus.style.color = '#4ade9b';
-                        docPackBtn.disabled = false;
                         docResetBtn.disabled = false;
                         docExportBtn.disabled = false;
 
@@ -320,7 +335,7 @@
                 const newBytes = new TextEncoder().encode(newText);
                 docModified[entry.name] = newBytes;
                 docShowToast('✅ ' + entry.name + ' diperbarui (' + newBytes.length + ' bytes)', 'success');
-                docPackBtn.disabled = false;
+                updatePatchButton();
                 docRenderFileList();
             });
 
@@ -367,7 +382,7 @@
                     const newData = new Uint8Array(ev.target.result);
                     docModified[entry.name] = newData;
                     docShowToast('✅ ' + entry.name + ' diimport (' + newData.length + ' bytes)', 'success');
-                    docPackBtn.disabled = false;
+                    updatePatchButton();
                     docRenderFileList();
                 };
                 reader.readAsArrayBuffer(this.files[0]);
@@ -614,25 +629,69 @@
                 return result;
             }
 
-            docPackBtn.addEventListener('click', function() {
+            docPackBtn.addEventListener('click', async function() {
                 if (!docExtracted || docEntries.length === 0) {
-                    docShowToast('⚠️ belum ada data', 'warning');
+                    docShowToast('⚠️ belum ada data Document.unity3d', 'warning');
                     return;
                 }
+                if (!docResCheckXML || !docBinaryPatchXML) {
+                    const missing = [];
+                    if (!docResCheckXML) missing.push('ResCheckConf.xml');
+                    if (!docBinaryPatchXML) missing.push('BinaryPatchMD5.xml');
+                    docShowToast('⚠️ Upload lengkap dulu: ' + missing.join(', '), 'warning');
+                    return;
+                }
+
+                const log = docPatchLog;
+                log.classList.add('active');
+                log.textContent = '⏳ Auto-patch + pack...\n';
+                docPackBtn.disabled = true;
+
                 try {
-                    const result = docPackBytes();
-                    const blob = new Blob([result], { type: 'application/octet-stream' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'Document_modified.unity3d';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    docShowToast('⬇️ Document_modified.unity3d berhasil diunduh', 'success');
+                    const packed = docPackBytes();
+                    const docMD5 = await md5FromBytes(packed);
+                    const docXXHash = xxhash6(packed);
+                    const docSize = packed.length;
+
+                    log.textContent += `  Document.unity3d: MD5=${docMD5}, xxHash=${docXXHash}, size=${docSize}\n`;
+
+                    const resPatch = patchXML(docResCheckXML, 'Document', docMD5, docXXHash, docSize);
+                    if (resPatch.patched) {
+                        docResCheckXML = resPatch.data;
+                        log.textContent += `  ✅ ResCheckConf.xml patched\n`;
+                    } else {
+                        log.textContent += `  ⚠️ ResCheckConf.xml: target 'Document' tidak ditemukan\n`;
+                    }
+
+                    const resMD5 = await md5FromBytes(docResCheckXML);
+                    const resXXHash = xxhash6(docResCheckXML);
+                    const resSize = docResCheckXML.length;
+                    log.textContent += `  ResCheckConf.xml: MD5=${resMD5}, xxHash=${resXXHash}, size=${resSize}\n`;
+
+                    let bp1 = patchXML(docBinaryPatchXML, 'Document/android/Document.unity3d', docMD5, docXXHash, null);
+                    let bp2 = patchXML(bp1.data, 'Document/android/ResCheckConf.xml', resMD5, resXXHash, null);
+                    if (bp1.patched) log.textContent += `  ✅ BinaryPatchMD5: Document.unity3d patched\n`;
+                    else log.textContent += `  ⚠️ BinaryPatchMD5: Document.unity3d target tidak ditemukan\n`;
+                    if (bp2.patched) log.textContent += `  ✅ BinaryPatchMD5: ResCheckConf.xml patched\n`;
+                    else log.textContent += `  ⚠️ BinaryPatchMD5: ResCheckConf.xml target tidak ditemukan\n`;
+
+                    docBinaryPatchXML = bp2.data;
+
+                    log.textContent += `\n✅ PATCH SELESAI — mengunduh 3 file...\n`;
+
+                    downloadBlob(packed, 'Document_modified.unity3d', 'application/octet-stream');
+                    await new Promise(r => setTimeout(r, 400));
+                    downloadBlob(docResCheckXML, 'ResCheckConf_patched.xml', 'application/xml');
+                    await new Promise(r => setTimeout(r, 400));
+                    downloadBlob(docBinaryPatchXML, 'BinaryPatchMD5_patched.xml', 'application/xml');
+
+                    log.textContent += `  ⬇️ Document_modified.unity3d\n  ⬇️ ResCheckConf_patched.xml\n  ⬇️ BinaryPatchMD5_patched.xml\n`;
+                    docShowToast('⬇️ 3 file berhasil diunduh (Document + 2 XML patched)', 'success');
                 } catch (e) {
-                    docShowToast('❌ gagal pack: ' + e.message, 'error');
+                    log.textContent += `\n❌ ERROR: ${e.message}`;
+                    docShowToast('❌ Gagal pack/patch: ' + e.message, 'error');
+                } finally {
+                    updatePatchButton();
                 }
             });
 
