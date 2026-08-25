@@ -150,8 +150,8 @@
                 <span class="dev-profile-arrow" aria-hidden="true">→</span>
             </a>
             <ul class="dev-info-list">
-                <li><span class="dev-info-key" data-i18n="menu.name">Nama</span><span class="dev-info-val">Adi Ilyas</span></li>
-                <li><span class="dev-info-key" data-i18n="menu.school">Sekolah</span><span class="dev-info-val">SMK PGRI</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.name">Nama</span><span class="dev-info-val">Lisa</span></li>
+                <li><span class="dev-info-key" data-i18n="menu.school">Sekolah</span><span class="dev-info-val">SMA</span></li>
                 <li><span class="dev-info-key" data-i18n="menu.motto">Moto</span><span class="dev-info-val">Berkarya didalam Gelap</span></li>
                 <li><span class="dev-info-key" data-i18n="menu.project">Project</span><span class="dev-info-val">MLBB Unity Tools</span></li>
             </ul>
@@ -232,6 +232,7 @@
         <div class="menu-tabs">
             <div class="menu-tab active" data-panel="panel-hero" data-i18n="tab.hero">🧬 Hero.bytes Viewer</div>
             <div class="menu-tab" data-panel="panel-doc" data-i18n="tab.doc">📦 DocumentExtractor</div>
+            <div class="menu-tab" data-panel="panel-xxh" data-i18n="tab.xxh">🔧 Patch File (XXH)</div>
             <div class="menu-tab" data-panel="panel-go" data-i18n="tab.go">⚡ GameObject Overrider</div>
             <div class="menu-tab" data-panel="panel-py" data-i18n="tab.py">🔐 Python Encrypted</div>
         </div>
@@ -363,6 +364,33 @@
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
                 <button class="btn btn-warning" id="docPackBtn" disabled data-i18n="doc.pack" title="Butuh Document.unity3d + ResCheckConf.xml + BinaryPatchMD5.xml">📦 pack + auto-patch &amp; download 3 file</button>
                 <button class="btn" id="docResetBtn" disabled data-i18n="btn.reset">↺ reset</button>
+            </div>
+
+        </div>
+
+        <div class="menu-panel" id="panel-xxh">
+
+            <p style="color:var(--text-secondary); margin-bottom:14px; font-size:13px; line-height:1.55;">
+                Upload file untuk menghitung <strong>XXH64</strong> (16 digit), <strong>XXH 6-digit</strong> (Little-Endian 3-byte, sesuai xxh.py), dan <strong>MD5</strong>. Semua dihitung di browser.
+            </p>
+
+            <div class="upload-zone" id="xxhDropZone">
+                <div class="upload-icon">🔧</div>
+                <input type="file" id="xxhFileInput" />
+                <label for="xxhFileInput" class="btn btn-primary" style="display:inline-block; margin-top:6px;">pilih file</label>
+                <div class="file-name" id="xxhFileName">upload file ke sini, atau pilih secara manual</div>
+                <div class="file-size" id="xxhFileSize"></div>
+            </div>
+
+            <div class="stats-grid" id="xxhStats" style="margin-top:16px;">
+                <div class="stat-item" style="grid-column:1/-1;"><span class="label">File</span><span class="value" id="xxhStatFile">—</span></div>
+                <div class="stat-item"><span class="label">XXH (16 Digit)</span><span class="value" id="xxhStat16" style="font-family:monospace;font-size:13px;">—</span></div>
+                <div class="stat-item"><span class="label">XXH (6 Digit)</span><span class="value" id="xxhStat6" style="font-family:monospace;font-size:15px;color:#4ade9b;">—</span></div>
+                <div class="stat-item" style="grid-column:1/-1;"><span class="label">MD5</span><span class="value" id="xxhStatMD5" style="font-family:monospace;font-size:13px;">—</span></div>
+            </div>
+
+            <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:16px;">
+                <button class="btn" id="xxhResetBtn" disabled>↺ reset</button>
             </div>
 
         </div>

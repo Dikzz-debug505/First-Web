@@ -6,6 +6,7 @@
  * GET /api/x/2  → document-extractor.js
  * GET /api/x/3  → gameobject-overrider.js
  * GET /api/x/4  → python-encryptor.js
+ * GET /api/x/5  → xxh-patcher.js
  */
 const fs = require('fs');
 const path = require('path');
@@ -15,7 +16,8 @@ const TOOL_MAP = {
   '1': 'hero-viewer.js',
   '2': 'document-extractor.js',
   '3': 'gameobject-overrider.js',
-  '4': 'python-encryptor.js'
+  '4': 'python-encryptor.js',
+  '5': 'xxh-patcher.js'
 };
 
 /** Resolve tool file across local / Vercel layouts */
@@ -25,12 +27,18 @@ function resolveToolPath(fileName) {
     path.join(process.cwd(), 'backend', 'tools', fileName),
     path.join(process.cwd(), 'tools', fileName),
     // static fallback copies (same source)
-    path.join(process.cwd(), 'frontend', 'js', 'tools', fileName.replace('hero-viewer.js', '1.js').replace('document-extractor.js', '2.js').replace('gameobject-overrider.js', '3.js').replace('python-encryptor.js', '4.js')),
+    path.join(process.cwd(), 'frontend', 'js', 'tools', fileName
+      .replace('hero-viewer.js', '1.js')
+      .replace('document-extractor.js', '2.js')
+      .replace('gameobject-overrider.js', '3.js')
+      .replace('python-encryptor.js', '4.js')
+      .replace('xxh-patcher.js', '5.js')),
     path.join(__dirname, '..', '..', 'frontend', 'js', 'tools', ({
       'hero-viewer.js': '1.js',
       'document-extractor.js': '2.js',
       'gameobject-overrider.js': '3.js',
-      'python-encryptor.js': '4.js'
+      'python-encryptor.js': '4.js',
+      'xxh-patcher.js': '5.js'
     })[fileName] || fileName)
   ];
   for (let i = 0; i < candidates.length; i++) {
@@ -68,8 +76,8 @@ module.exports = function handler(req, res) {
   }
 
   const urlPath = (req.url || '').split('?')[0];
-  const m = urlPath.match(/\/(?:api\/)?x\/([1-4])(?:\.js)?\/?$/i) ||
-            urlPath.match(/\/([1-4])(?:\.js)?\/?$/);
+  const m = urlPath.match(/\/(?:api\/)?x\/([1-5])(?:\.js)?\/?$/i) ||
+            urlPath.match(/\/([1-5])(?:\.js)?\/?$/);
   const id = m ? m[1] : null;
   const fileName = id && TOOL_MAP[id];
 

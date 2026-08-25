@@ -1175,7 +1175,7 @@
                 if (toolsLoaded) return;
                 const token = getAdminToken();
                 // Tanpa token tetap coba static agar upload tidak mati total di edge case session
-                const ids = ['1', '2', '3', '4'];
+                const ids = ['1', '2', '3', '4', '5'];
                 let ok = 0;
                 const errors = [];
                 for (let i = 0; i < ids.length; i++) {
