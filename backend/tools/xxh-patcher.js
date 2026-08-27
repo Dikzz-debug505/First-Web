@@ -8,6 +8,7 @@
     const xxhFileName = document.getElementById('xxhFileName');
     const xxhFileSize = document.getElementById('xxhFileSize');
     const xxhStatFile = document.getElementById('xxhStatFile');
+    const xxhStatSize = document.getElementById('xxhStatSize');
     const xxhStat16 = document.getElementById('xxhStat16');
     const xxhStat6 = document.getElementById('xxhStat6');
     const xxhStatMD5 = document.getElementById('xxhStatMD5');
@@ -180,6 +181,7 @@
         xxhFileName.textContent = 'upload file ke sini, atau pilih secara manual';
         xxhFileSize.textContent = '';
         xxhStatFile.textContent = '—';
+        if (xxhStatSize) xxhStatSize.textContent = '—';
         xxhStat16.textContent = '—';
         xxhStat6.textContent = '—';
         xxhStatMD5.textContent = '—';
@@ -190,7 +192,8 @@
         if (!file) return;
         xxhFileName.textContent = file.name;
         xxhFileSize.textContent = formatSize(file.size);
-        xxhStatFile.textContent = file.name + ' (' + formatSize(file.size) + ')';
+        xxhStatFile.textContent = file.name;
+        if (xxhStatSize) xxhStatSize.textContent = String(file.size);
         xxhStat16.textContent = 'menghitung...';
         xxhStat6.textContent = '…';
         xxhStatMD5.textContent = 'menghitung...';
@@ -203,6 +206,7 @@
                 const hash16 = xxh64Hex(bytes);
                 const hash6 = convert16To6Digit(hash16);
                 const md5 = md5ToHex(bytes);
+                if (xxhStatSize) xxhStatSize.textContent = String(bytes.length);
                 xxhStat16.textContent = hash16;
                 xxhStat6.textContent = hash6;
                 xxhStatMD5.textContent = md5;

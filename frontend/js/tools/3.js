@@ -407,43 +407,67 @@
             }
 
             /**
-             * Binary-safe CAB replacement. Avoids building a multi-megabyte JS string.
-             * CAB identifiers are ASCII and are normally stored in a fixed 36-byte field.
+             * CAB replacement — same logic as cab.py:
+             *   pattern CAB-[^\x00\r\n\s]{1,32}
+             *   pad old match + new CAB to 36 bytes with \x00
+             *   binary replace (UTF-8 safe, supports © etc.)
              */
             function replaceCabStrings(data, newCabBytes) {
                 if (!newCabBytes || newCabBytes.length !== TARGET_CAB_LEN) {
                     return { replaced: false, count: 0, found: 0 };
                 }
 
-                const cabPrefix = [67, 65, 66, 45]; // CAB-
-                let found = 0;
-                let count = 0;
-
-                for (let i = 0; i <= data.length - TARGET_CAB_LEN; i++) {
-                    if (data[i] !== cabPrefix[0] || data[i + 1] !== cabPrefix[1] ||
-                        data[i + 2] !== cabPrefix[2] || data[i + 3] !== cabPrefix[3]) continue;
-
+                // Collect unique CAB matches (bytes after "CAB-" until \0 / \r / \n / space, max 32)
+                const unique = [];
+                const seen = Object.create(null);
+                for (let i = 0; i + 4 < data.length; i++) {
+                    if (data[i] !== 0x43 || data[i + 1] !== 0x41 ||
+                        data[i + 2] !== 0x42 || data[i + 3] !== 0x2D) continue;
                     let end = i + 4;
-                    let valid = true;
-                    while (end < i + TARGET_CAB_LEN) {
+                    const maxEnd = Math.min(data.length, i + 4 + 32);
+                    while (end < maxEnd) {
                         const b = data[end];
-                        if (b === 0) break;
-                        const ascii = (b >= 0x21 && b <= 0x7e);
-                        if (!ascii || b === 0x0a || b === 0x0d || b === 0x20) {
-                            valid = false;
-                            break;
-                        }
+                        if (b === 0x00 || b === 0x0A || b === 0x0D || b === 0x20) break;
                         end++;
                     }
-                    if (!valid) continue;
-
-                    found++;
-                    data.set(newCabBytes, i);
-                    count++;
-                    i += TARGET_CAB_LEN - 1;
+                    if (end === i + 4) continue;
+                    const key = Array.prototype.join.call(data.subarray(i, end), ',');
+                    if (seen[key]) continue;
+                    seen[key] = true;
+                    unique.push(data.slice(i, end));
                 }
 
-                return { replaced: count > 0, count, found };
+                if (!unique.length) {
+                    return { replaced: false, count: 0, found: 0 };
+                }
+
+                let count = 0;
+                for (let u = 0; u < unique.length; u++) {
+                    const oldCab = unique[u];
+                    // search_target = old_cab padded to 36 with \x00 (like cab.py)
+                    const searchTarget = new Uint8Array(TARGET_CAB_LEN);
+                    if (oldCab.length < TARGET_CAB_LEN) {
+                        searchTarget.set(oldCab, 0);
+                        // rest already 0
+                    } else {
+                        searchTarget.set(oldCab.subarray(0, TARGET_CAB_LEN), 0);
+                    }
+
+                    // Binary replace all occurrences of searchTarget with newCabBytes
+                    const tLen = TARGET_CAB_LEN;
+                    for (let i = 0; i <= data.length - tLen; i++) {
+                        let match = true;
+                        for (let j = 0; j < tLen; j++) {
+                            if (data[i + j] !== searchTarget[j]) { match = false; break; }
+                        }
+                        if (!match) continue;
+                        data.set(newCabBytes, i);
+                        count++;
+                        i += tLen - 1;
+                    }
+                }
+
+                return { replaced: count > 0, count, found: unique.length };
             }
 
             function goHandleFile(file) {
