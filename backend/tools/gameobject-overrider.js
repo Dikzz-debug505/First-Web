@@ -407,17 +407,19 @@
             }
 
             /**
-             * CAB replacement — same logic as cab.py:
-             *   pattern CAB-[^\x00\r\n\s]{1,32}
-             *   pad old match + new CAB to 36 bytes with \x00
-             *   binary replace (UTF-8 safe, supports © etc.)
+             * CAB replacement — aligned with cab.py (UTF-8, 36-byte field, special chars OK).
+             *
+             * 1) Find CAB-[^\x00\r\n\s]{1,32} (same pattern as cab.py)
+             * 2) Try exact replace of (oldCab + \x00 pad to 36) → newCab   [cab.py]
+             * 3) Fallback: at every match start, overwrite next 36 bytes with newCab
+             *    (Unity fixed field; works when trailing bytes are not pure nulls)
              */
             function replaceCabStrings(data, newCabBytes) {
                 if (!newCabBytes || newCabBytes.length !== TARGET_CAB_LEN) {
                     return { replaced: false, count: 0, found: 0 };
                 }
 
-                // Collect unique CAB matches (bytes after "CAB-" until \0 / \r / \n / space, max 32)
+                const positions = [];
                 const unique = [];
                 const seen = Object.create(null);
                 for (let i = 0; i + 4 < data.length; i++) {
@@ -431,43 +433,60 @@
                         end++;
                     }
                     if (end === i + 4) continue;
+                    positions.push(i);
                     const key = Array.prototype.join.call(data.subarray(i, end), ',');
-                    if (seen[key]) continue;
-                    seen[key] = true;
-                    unique.push(data.slice(i, end));
+                    if (!seen[key]) {
+                        seen[key] = true;
+                        unique.push(data.slice(i, end));
+                    }
                 }
 
-                if (!unique.length) {
+                if (!positions.length) {
                     return { replaced: false, count: 0, found: 0 };
                 }
 
                 let count = 0;
+                const tLen = TARGET_CAB_LEN;
+
+                // Pass 1 — cab.py: replace oldCab + \x00-pad-to-36 with newCab
                 for (let u = 0; u < unique.length; u++) {
                     const oldCab = unique[u];
-                    // search_target = old_cab padded to 36 with \x00 (like cab.py)
-                    const searchTarget = new Uint8Array(TARGET_CAB_LEN);
-                    if (oldCab.length < TARGET_CAB_LEN) {
-                        searchTarget.set(oldCab, 0);
-                        // rest already 0
-                    } else {
-                        searchTarget.set(oldCab.subarray(0, TARGET_CAB_LEN), 0);
-                    }
-
-                    // Binary replace all occurrences of searchTarget with newCabBytes
-                    const tLen = TARGET_CAB_LEN;
+                    const searchTarget = new Uint8Array(tLen);
+                    if (oldCab.length <= tLen) searchTarget.set(oldCab, 0);
+                    else searchTarget.set(oldCab.subarray(0, tLen), 0);
                     for (let i = 0; i <= data.length - tLen; i++) {
                         let match = true;
                         for (let j = 0; j < tLen; j++) {
                             if (data[i + j] !== searchTarget[j]) { match = false; break; }
                         }
                         if (!match) continue;
+                        let same = true;
+                        for (let j = 0; j < tLen; j++) {
+                            if (data[i + j] !== newCabBytes[j]) { same = false; break; }
+                        }
+                        if (same) { i += tLen - 1; continue; }
                         data.set(newCabBytes, i);
                         count++;
                         i += tLen - 1;
                     }
                 }
 
-                return { replaced: count > 0, count, found: unique.length };
+                // Pass 2 — field overwrite at match starts (if pad-search found nothing)
+                if (count === 0) {
+                    for (let p = 0; p < positions.length; p++) {
+                        const i = positions[p];
+                        if (i + tLen > data.length) continue;
+                        let same = true;
+                        for (let j = 0; j < tLen; j++) {
+                            if (data[i + j] !== newCabBytes[j]) { same = false; break; }
+                        }
+                        if (same) continue;
+                        data.set(newCabBytes, i);
+                        count++;
+                    }
+                }
+
+                return { replaced: count > 0, count, found: positions.length };
             }
 
             function goHandleFile(file) {
@@ -556,6 +575,7 @@
                                 modifiedBlocks[bi] = false;
                             }
 
+                            // GameObject only inside decompressed blocks
                             for (let bi = 0; bi < unpacked.rawParts.length; bi++) {
                                 const part = unpacked.rawParts[bi];
                                 const partGo = disableGameObjectByName(part, targetName);
@@ -570,28 +590,28 @@
                                     }
                                     if (partGo.disabled) modifiedBlocks[bi] = true;
                                 }
-                                if (cabBytes) {
-                                    const partCab = replaceCabStrings(part, cabBytes);
-                                    if (partCab.replaced) {
-                                        cabResult.replaced = true;
-                                        cabResult.count += partCab.count;
-                                        modifiedBlocks[bi] = true;
-                                    }
-                                }
                             }
 
                             goProgressBar.style.width = '70%';
                             goProgressText.textContent = '70%';
 
-                            if (goResult.disabled || cabResult.replaced) {
+                            if (goResult.disabled) {
                                 resultBytes = unityFsRepack(unpacked, modifiedBlocks);
                             }
                         } else {
                             const data = new Uint8Array(goRaw);
                             goResult = disableGameObjectByName(data, targetName);
-                            if (cabBytes) cabResult = replaceCabStrings(data, cabBytes);
-                            if (goResult.disabled || cabResult.replaced || goResult.candidates > 0) {
+                            if (goResult.disabled || goResult.candidates > 0) {
                                 resultBytes = data;
+                            }
+                        }
+
+                        // CAB always on whole-file binary (same as cab.py) — after GO so both can apply
+                        if (cabBytes) {
+                            const cabTarget = resultBytes ? resultBytes : new Uint8Array(goRaw);
+                            cabResult = replaceCabStrings(cabTarget, cabBytes);
+                            if (cabResult.replaced) {
+                                resultBytes = cabTarget;
                             }
                         }
 
