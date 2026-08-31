@@ -130,10 +130,9 @@
             font-weight: 700;
             letter-spacing: -0.03em;
             margin: 0 0 6px;
-            background: linear-gradient(135deg, #e8f0fa 0%, #8ec8ff 55%, #5cb0ff 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--text-primary);
+            background: none;
+            -webkit-text-fill-color: currentColor;
             position: relative;
             z-index: 1;
         }
@@ -441,7 +440,9 @@
 }
 
 .profile-name {
-    background: linear-gradient(135deg, #e8f0fa 0%, #9bcfff 58%, #6bb8ff 100%);
+    color: var(--text-primary);
+    background: none;
+    -webkit-text-fill-color: currentColor;
 }
 
 .profile-motto {
