@@ -14,9 +14,9 @@
         if (!cards.length) return;
 
         let active = Math.max(0, cards.findIndex(card => card.classList.contains('active')));
-        let startX = 0;
         let pointerStartX = 0;
         let dragging = false;
+        let suppressClick = false;
         let syncFrame = 0;
 
         cards.forEach((card, index) => {
@@ -104,17 +104,31 @@
         }
 
         cards.forEach(card => {
-            card.addEventListener('click', scheduleSync);
+            card.addEventListener('click', function (event) {
+                if (suppressClick) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    suppressClick = false;
+                    return;
+                }
+                scheduleSync();
+            });
         });
 
         if (prev) prev.addEventListener('click', function () { previousCard(); restartIdle(); });
         if (next) next.addEventListener('click', function () { nextCard(); restartIdle(); });
 
+        // Pointer events cover mouse + touch in modern Chrome. Using a single
+        // input path prevents touchend and pointerup from advancing twice.
         carousel.addEventListener('pointerdown', function (event) {
             if (event.pointerType === 'mouse' && event.button !== 0) return;
             pointerStartX = event.clientX;
             dragging = true;
+            suppressClick = false;
             carousel.classList.add('is-dragging');
+            if (carousel.setPointerCapture) {
+                try { carousel.setPointerCapture(event.pointerId); } catch (_) {}
+            }
         });
 
         carousel.addEventListener('pointerup', function (event) {
@@ -123,26 +137,19 @@
             dragging = false;
             carousel.classList.remove('is-dragging');
             if (Math.abs(distance) < 48) return;
+
+            // Prevent the synthetic click that follows a swipe from selecting
+            // another card and making the transition appear to jump.
+            suppressClick = true;
             if (distance < 0) nextCard(); else previousCard();
             restartIdle();
+            window.setTimeout(function () { suppressClick = false; }, 0);
         });
 
         carousel.addEventListener('pointercancel', function () {
             dragging = false;
             carousel.classList.remove('is-dragging');
         });
-
-        carousel.addEventListener('touchstart', function (event) {
-            startX = event.touches[0]?.clientX || 0;
-        }, { passive: true });
-
-        carousel.addEventListener('touchend', function (event) {
-            const endX = event.changedTouches[0]?.clientX || 0;
-            const distance = endX - startX;
-            if (Math.abs(distance) < 48) return;
-            if (distance < 0) nextCard(); else previousCard();
-            restartIdle();
-        }, { passive: true });
 
         let idleTimer = null;
         function stopIdle() {

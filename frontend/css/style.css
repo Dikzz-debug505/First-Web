@@ -3020,13 +3020,17 @@ body::after {
     box-shadow: 0 20px 46px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.035) !important;
     cursor: pointer;
     transform-origin: center center;
+    /* Override the legacy .menu-tab transition (!important) so the
+       carousel never falls back to the old 150ms transform snap. */
     transition:
         transform 420ms cubic-bezier(.22,.61,.36,1),
-        opacity 300ms cubic-bezier(.4,0,.2,1),
-        filter 300ms cubic-bezier(.4,0,.2,1),
+        opacity 360ms cubic-bezier(.4,0,.2,1),
         border-color 220ms ease,
-        box-shadow 220ms ease;
+        box-shadow 220ms ease !important;
     will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
 }
 .tool-card-carousel .menu-tab.tool-card::before,
 .tool-card-carousel .menu-tab.tool-card::after { content: none !important; }
@@ -3077,7 +3081,7 @@ body::after {
     transform: translate(2px,-2px);
 }
 .tool-card-carousel .menu-tab.tool-card.card-pos-center {
-    transform: translate(-50%, -50%) translateX(0) rotateY(0deg) scale(1);
+    transform: translate3d(-50%, -50%, 0) translate3d(0, 0, 0) rotateY(0deg) scale(1);
     opacity: 1;
     filter: none;
     z-index: 5;
@@ -3085,35 +3089,30 @@ body::after {
     box-shadow: 0 24px 56px rgba(0,0,0,.42), 0 0 0 1px rgba(90, 155, 207, .05), inset 0 1px 0 rgba(255,255,255,.05) !important;
 }
 .tool-card-carousel .menu-tab.tool-card.card-pos-left {
-    transform: translate(-50%, -50%) translateX(-285px) rotateY(22deg) scale(.84);
+    transform: translate3d(-50%, -50%, 0) translate3d(-285px, 0, 0) rotateY(22deg) scale(.84);
     opacity: .52;
-    filter: blur(.3px);
     z-index: 3;
 }
 .tool-card-carousel .menu-tab.tool-card.card-pos-right {
-    transform: translate(-50%, -50%) translateX(285px) rotateY(-22deg) scale(.84);
+    transform: translate3d(-50%, -50%, 0) translate3d(285px, 0, 0) rotateY(-22deg) scale(.84);
     opacity: .52;
-    filter: blur(.3px);
     z-index: 3;
 }
 .tool-card-carousel .menu-tab.tool-card.card-pos-left-2 {
-    transform: translate(-50%, -50%) translateX(-490px) rotateY(30deg) scale(.68);
+    transform: translate3d(-50%, -50%, 0) translate3d(-490px, 0, 0) rotateY(30deg) scale(.68);
     opacity: .15;
-    filter: blur(1.5px);
     z-index: 1;
     pointer-events: none;
 }
 .tool-card-carousel .menu-tab.tool-card.card-pos-right-2 {
-    transform: translate(-50%, -50%) translateX(490px) rotateY(-30deg) scale(.68);
+    transform: translate3d(-50%, -50%, 0) translate3d(490px, 0, 0) rotateY(-30deg) scale(.68);
     opacity: .15;
-    filter: blur(1.5px);
     z-index: 1;
     pointer-events: none;
 }
 .tool-card-carousel .menu-tab.tool-card.card-pos-hidden {
-    transform: translate(-50%, -50%) translateX(0) scale(.5);
+    transform: translate3d(-50%, -50%, 0) translate3d(0, 0, 0) scale(.5);
     opacity: 0;
-    filter: blur(2px);
     pointer-events: none;
     z-index: 0;
 }
@@ -3155,8 +3154,8 @@ body::after {
     .tool-card-menu-head p { display: none; }
     .tool-card-carousel { height: 276px; }
     .tool-card-carousel .menu-tab.tool-card { width: min(260px, 67%); height: 234px; padding: 18px !important; }
-    .tool-card-carousel .menu-tab.tool-card.card-pos-left { transform: translate(-50%, -50%) translateX(-138px) rotateY(18deg) scale(.73); opacity: .32; }
-    .tool-card-carousel .menu-tab.tool-card.card-pos-right { transform: translate(-50%, -50%) translateX(138px) rotateY(-18deg) scale(.73); opacity: .32; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-left { transform: translate3d(-50%, -50%, 0) translate3d(-138px, 0, 0) rotateY(18deg) scale(.73); opacity: .32; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-right { transform: translate3d(-50%, -50%, 0) translate3d(138px, 0, 0) rotateY(-18deg) scale(.73); opacity: .32; }
     .tool-card-carousel .menu-tab.tool-card.card-pos-left-2,
     .tool-card-carousel .menu-tab.tool-card.card-pos-right-2 { opacity: 0; }
     .tool-card-copy strong { font-size: 16px; }
@@ -3168,8 +3167,8 @@ body::after {
     .tool-card-nav { width: 34px; height: 34px; }
     .tool-card-carousel { height: 268px; }
     .tool-card-carousel .menu-tab.tool-card { width: 245px; height: 228px; }
-    .tool-card-carousel .menu-tab.tool-card.card-pos-left { transform: translate(-50%, -50%) translateX(-112px) rotateY(16deg) scale(.68); opacity: .22; }
-    .tool-card-carousel .menu-tab.tool-card.card-pos-right { transform: translate(-50%, -50%) translateX(112px) rotateY(-16deg) scale(.68); opacity: .22; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-left { transform: translate3d(-50%, -50%, 0) translate3d(-112px, 0, 0) rotateY(16deg) scale(.68); opacity: .22; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-right { transform: translate3d(-50%, -50%, 0) translate3d(112px, 0, 0) rotateY(-16deg) scale(.68); opacity: .22; }
     .tool-card-hint { display: none; }
 }
 
