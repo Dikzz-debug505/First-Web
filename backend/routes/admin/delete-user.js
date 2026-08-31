@@ -3,6 +3,11 @@
  * Body: { username }
  * Soft-delete: is_active = false + hapus device registry
  * Auth: Bearer admin token
+ *
+ * Aturan:
+ *   - Super Admin boleh hapus user biasa dan admin biasa (is_admin, !is_super)
+ *   - Admin biasa hanya boleh hapus user biasa
+ *   - Akun Super Admin tidak bisa dihapus oleh siapapun lewat endpoint ini
  */
 const { requireAdmin, getSupabase, parseBody, json } = require('../../lib/session');
 
@@ -22,6 +27,7 @@ module.exports = async function handler(req, res) {
     return json(res, 401, { ok: false, message: 'Unauthorized' });
   }
 
+  const isSuper = !!admin.isSuper;
   const supabase = getSupabase();
   if (!supabase) {
     return json(res, 500, { ok: false, message: 'Server misconfigured' });
@@ -35,7 +41,7 @@ module.exports = async function handler(req, res) {
 
   const { data: rows, error: findErr } = await supabase
     .from('app_users')
-    .select('username, is_admin')
+    .select('username, is_admin, is_super')
     .ilike('username', username)
     .limit(5);
 
@@ -50,7 +56,14 @@ module.exports = async function handler(req, res) {
   if (!row) {
     return json(res, 200, { ok: false, message: 'User tidak ditemukan' });
   }
-  if (row.is_admin) {
+
+  // Super Admin tidak boleh dihapus lewat endpoint ini
+  if (row.is_admin && row.is_super) {
+    return json(res, 200, { ok: false, message: 'Akun Super Admin tidak bisa dihapus' });
+  }
+
+  // Admin biasa hanya bisa dihapus oleh Super Admin
+  if (row.is_admin && !isSuper) {
     return json(res, 200, { ok: false, message: 'Akun admin tidak bisa dihapus' });
   }
 

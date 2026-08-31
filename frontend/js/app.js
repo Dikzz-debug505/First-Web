@@ -1793,15 +1793,22 @@
                         : '<span class="admin-badge managed">local</span>';
                     const expiryStr = u.expiryDate ? escapeHtml(String(u.expiryDate)) : '—';
                     let actions = '';
-                    if (isAdminAcc) {
-                        actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
-                    } else {
-                        actions = '<div class="admin-actions">' +
-                            '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">Edit</button>' +
-                            '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">Hapus</button>' +
-                            '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">Reset Device</button>' +
-                            '</div>';
-                    }
+                        const _t = window.MLBB_i18n && MLBB_i18n.t;
+                        if (isSuperAcc) {
+                            actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
+                        } else if (isAdminAcc && !currentIsSuper) {
+                            actions = '<span style="color:#8a8d93;font-size:12px;">—</span>';
+                        } else if (isAdminAcc && currentIsSuper) {
+                            actions = '<div class="admin-actions">' +
+                                '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.delete') : 'Hapus') + '</button>' +
+                                '</div>';
+                        } else {
+                            actions = '<div class="admin-actions">' +
+                                '<button type="button" class="btn btn-sm" data-action="edit" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.edit') : 'Edit') + '</button>' +
+                                '<button type="button" class="btn btn-sm btn-danger" data-action="delete" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.delete') : 'Hapus') + '</button>' +
+                                '<button type="button" class="btn btn-sm" data-action="reset-device" data-user="' + escapeHtml(u.username) + '">' + (_t ? _t('admin.reset_device') : 'Reset Device') + '</button>' +
+                                '</div>';
+                        }
                     rows.push(
                         '<tr>' +
                         '<td><strong>' + escapeHtml(u.username) + '</strong></td>' +

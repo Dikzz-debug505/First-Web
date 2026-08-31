@@ -2188,3 +2188,348 @@ body::after {
         animation: none;
     }
 }
+
+
+/* =========================================================
+   UI POLISH — presentation-only refinement
+   Keeps existing IDs, classes, events and state logic intact.
+   ========================================================= */
+
+:root {
+    --ui-fast: 140ms;
+    --ui-hover: 180ms;
+    --ui-panel: 280ms;
+    --ui-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --ui-ease-state: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Interactive controls: crisp, deliberate feedback */
+button,
+select,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+label.btn,
+a.dev-profile-card {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button,
+select,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    touch-action: manipulation;
+}
+
+.btn,
+.menu-tab,
+.lang-btn,
+.side-menu-close,
+.music-fab,
+.profile-nav-back,
+.admin-role-option,
+.hero-header,
+.upload-zone label.btn {
+    will-change: transform;
+}
+
+/* Keep the press state immediate without adding bounce. */
+.btn:active:not(:disabled),
+.menu-tab:active,
+.lang-btn:active,
+.side-menu-close:active,
+.music-fab:active,
+.profile-nav-back:active,
+.admin-role-option:active,
+.upload-zone label.btn:active {
+    transition-duration: var(--ui-fast) !important;
+}
+
+/* Tabs: quieter hover, stronger active hierarchy. */
+.menu-tabs {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
+}
+
+.menu-tab {
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-tab::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 3px;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--accent);
+    opacity: 0;
+    transform: scaleX(0.35);
+    transform-origin: center;
+    transition: opacity var(--ui-hover) var(--ui-ease-state),
+                transform var(--ui-panel) var(--ui-ease);
+}
+
+.menu-tab.active::after {
+    opacity: 0.9;
+    transform: scaleX(1);
+}
+
+.menu-tab.active::before {
+    color: var(--accent);
+    transition: opacity var(--ui-hover) ease;
+}
+
+/* Panel entry stays subtle: no blur/filter on content transitions. */
+.menu-panel.active {
+    animation: panelInPolished var(--ui-panel) var(--ui-ease) both;
+}
+
+@keyframes panelInPolished {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Buttons: slightly tighter elevation and a tactile release. */
+.btn {
+    transition:
+        background var(--ui-hover) var(--ui-ease-state),
+        border-color var(--ui-hover) var(--ui-ease-state),
+        color var(--ui-hover) var(--ui-ease-state),
+        transform var(--ui-fast) var(--ui-ease),
+        box-shadow var(--ui-hover) var(--ui-ease-state) !important;
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.985);
+}
+
+/* Form controls: shared focus language without changing validation behavior. */
+.hero-search,
+.hero-select,
+.edit-input,
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+textarea,
+select {
+    transition:
+        border-color var(--ui-hover) var(--ui-ease-state),
+        background-color var(--ui-hover) var(--ui-ease-state),
+        box-shadow var(--ui-hover) var(--ui-ease-state),
+        transform var(--ui-fast) var(--ui-ease) !important;
+}
+
+.hero-search:hover,
+.hero-select:hover,
+.edit-input:hover,
+input[type="text"]:hover,
+input[type="password"]:hover,
+input[type="email"]:hover,
+input[type="number"]:hover,
+input[type="search"]:hover,
+input[type="url"]:hover,
+textarea:hover,
+select:hover {
+    border-color: var(--border-strong);
+}
+
+.hero-search:focus,
+.hero-select:focus,
+.edit-input:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+    background-color: var(--bg-surface);
+}
+
+/* Clickable content gets a restrained lift; no layout movement. */
+.hero-card {
+    transition:
+        border-color var(--ui-hover) var(--ui-ease-state),
+        box-shadow var(--ui-hover) var(--ui-ease-state),
+        transform var(--ui-fast) var(--ui-ease) !important;
+}
+
+.hero-card:hover {
+    transform: translateY(-1px);
+}
+
+.hero-header {
+    transition:
+        background var(--ui-hover) var(--ui-ease-state),
+        color var(--ui-hover) var(--ui-ease-state);
+}
+
+.hero-header:active {
+    transform: scale(0.995);
+}
+
+/* Upload area responds to hover/focus without competing with drag state. */
+.upload-zone {
+    transition:
+        border-color var(--ui-hover) var(--ui-ease-state),
+        background var(--ui-hover) var(--ui-ease-state),
+        box-shadow var(--ui-hover) var(--ui-ease-state),
+        transform var(--ui-fast) var(--ui-ease) !important;
+}
+
+.upload-zone:hover {
+    border-color: var(--border-strong);
+}
+
+/* Side menu: faster backdrop, controlled panel motion, no heavy effects. */
+.side-menu-backdrop {
+    transition: opacity 240ms var(--ui-ease-state), visibility 240ms var(--ui-ease-state);
+}
+
+.side-menu-panel {
+    transition: transform 280ms var(--ui-ease);
+}
+
+.side-menu-close {
+    transition:
+        border-color var(--ui-hover) var(--ui-ease-state),
+        color var(--ui-hover) var(--ui-ease-state),
+        background var(--ui-hover) var(--ui-ease-state),
+        transform var(--ui-fast) var(--ui-ease) !important;
+}
+
+.side-menu-close:hover {
+    transform: rotate(8deg);
+}
+
+.side-menu-close:active {
+    transform: rotate(0deg) scale(0.94);
+}
+
+.dev-profile-card {
+    transition:
+        border-color var(--ui-hover) var(--ui-ease-state),
+        box-shadow var(--ui-hover) var(--ui-ease-state),
+        transform var(--ui-fast) var(--ui-ease),
+        background var(--ui-hover) var(--ui-ease-state) !important;
+}
+
+.dev-profile-card:active {
+    transform: scale(0.985);
+}
+
+/* Music control remains expressive, but the active pulse is less dominant. */
+.music-fab {
+    transition:
+        transform var(--ui-fast) var(--ui-ease),
+        box-shadow var(--ui-hover) var(--ui-ease-state),
+        border-color var(--ui-hover) var(--ui-ease-state),
+        background var(--ui-hover) var(--ui-ease-state) !important;
+}
+
+.music-fab:hover {
+    transform: scale(1.04);
+}
+
+.music-fab:active {
+    transform: scale(0.96);
+}
+
+/* Focus remains visible and consistent across keyboard interaction. */
+.btn:focus-visible,
+.menu-tab:focus-visible,
+.lang-btn:focus-visible,
+.side-menu-close:focus-visible,
+.music-fab:focus-visible,
+.profile-nav-back:focus-visible,
+.admin-role-option:focus-within,
+.hero-header:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid rgba(92, 176, 255, 0.62);
+    outline-offset: 2px;
+}
+
+/* Avoid accidental text selection on controls while preserving form editing. */
+.btn,
+.menu-tab,
+.lang-btn,
+.side-menu-close,
+.music-fab,
+.profile-nav-back,
+.admin-role-option,
+.hero-header {
+    user-select: none;
+}
+
+/* Responsive touch targets: preserve existing layout while making taps comfortable. */
+@media (max-width: 640px) {
+    .btn {
+        min-height: 40px;
+    }
+
+    .menu-tab {
+        min-height: 40px;
+    }
+
+    .side-menu-close {
+        width: 38px;
+        height: 38px;
+    }
+
+    .music-fab {
+        width: 52px;
+        height: 52px;
+    }
+}
+
+/* Motion preference remains authoritative. */
+@media (prefers-reduced-motion: reduce) {
+    .menu-panel.active {
+        animation: none !important;
+    }
+
+    .menu-tab::after {
+        transition: none !important;
+    }
+
+    .btn,
+    .menu-tab,
+    .lang-btn,
+    .side-menu-close,
+    .music-fab,
+    .profile-nav-back,
+    .admin-role-option,
+    .hero-header,
+    .hero-card,
+    .upload-zone,
+    .side-menu-backdrop,
+    .side-menu-panel,
+    .dev-profile-card,
+    .hero-search,
+    .hero-select,
+    .edit-input,
+    input,
+    textarea,
+    select {
+        transition-duration: 0.01ms !important;
+    }
+}
