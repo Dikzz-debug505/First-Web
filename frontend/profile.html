@@ -9,7 +9,7 @@
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
     <meta name="description" content="Developer profile — Unity Dev Tools.">
-    <link rel="stylesheet" href="css/style.css?v=202608241010">
+    <link rel="stylesheet" href="css/style.css?v=202609010508">
     <style>
         /* ========== Profile page — unique dark cinematic layout ========== */
         .profile-page {
@@ -577,6 +577,82 @@
 }
 </style>
 
+
+<style>
+/* Profile final refinement — presentation only */
+.profile-page { overflow-x: clip; }
+.profile-nav { min-height: 58px; }
+.profile-nav-back { min-width: 42px; }
+.profile-hero { padding-inline: clamp(16px, 4vw, 24px); }
+.profile-avatar { flex-shrink: 0; }
+.profile-name { text-wrap: balance; }
+.profile-role { text-wrap: balance; }
+.profile-motto { max-width: min(100%, 520px); line-height: 1.45; }
+.profile-body { max-width: 700px; }
+.profile-section-head { min-height: 54px; }
+.profile-section-title { min-width: 0; }
+.profile-info-row { min-width: 0; }
+.profile-info-key { max-width: 42%; }
+.profile-info-val {
+    max-width: 68%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.profile-support-note { margin-top: 12px !important; font-size: 11px !important; }
+.profile-footer-note { margin-top: 9px; opacity: .7; }
+
+@media (max-width: 640px) {
+    .profile-nav { padding: 9px 12px; }
+    .profile-nav-brand {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 52vw;
+    }
+    .profile-hero { padding-top: 42px; padding-bottom: 30px; }
+    .profile-body { padding-inline: 12px; }
+    .profile-section-head { padding-inline: 14px; }
+    .profile-section-body { padding: 14px; }
+    .profile-info-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+        align-items: start;
+    }
+    .profile-info-key { max-width: none; }
+    .profile-info-val {
+        max-width: none;
+        text-align: left;
+        line-height: 1.5;
+    }
+    .profile-support-badge { min-width: 0; }
+}
+
+@media (max-width: 380px) {
+    .profile-nav-back { padding-inline: 10px; }
+    .profile-nav-back span:last-child { display: none; }
+    .profile-hero { padding-top: 36px; }
+    .profile-body { padding-inline: 10px; }
+    .profile-section-body { padding-inline: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-page,
+    .profile-section,
+    .profile-avatar-ring { animation: none !important; }
+    .profile-avatar,
+    .profile-motto,
+    .profile-section-icon,
+    .profile-info-row,
+    .profile-tag,
+    .profile-support-badge,
+    .profile-support-logo,
+    .profile-nav-back,
+    .profile-footer a { transition: none !important; }
+}
+</style>
+
 </head>
 <body>
     <video id="appBgVideo" class="app-bg-video" autoplay muted loop playsinline preload="auto" aria-hidden="true">
@@ -715,7 +791,7 @@
                             </span>
                         </div>
                     </div>
-                    <p class="profile-about" style="margin-top:14px;font-size:12px;">
+                    <p class="profile-about" class="profile-about profile-support-note">
                         AI-assisted UI &amp; tooling.
                     </p>
                 </div>
@@ -724,7 +800,7 @@
 
         <footer class="profile-footer">
             <a href="/">← Back to Unity Dev Tools</a>
-            <div style="margin-top:10px;opacity:0.7;">© Lisaa · Focused on practical development</div>
+            <div class="profile-footer-note">© Lisaa · Focused on practical development</div>
         </footer>
     </div>
 
