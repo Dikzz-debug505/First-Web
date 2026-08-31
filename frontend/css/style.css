@@ -2915,3 +2915,267 @@ body::after {
     .profile-avatar-ring { animation: none !important; }
     .app-bg-video { opacity: .28; }
 }
+
+/* =========================================================
+   CARD MENU — UI-only presentation layer
+   Existing .menu-tab / data-panel behavior remains untouched.
+   ========================================================= */
+.tool-card-menu {
+    position: relative;
+    margin: 0 0 18px;
+    padding: 18px 18px 14px;
+    border: 1px solid rgba(120, 154, 184, 0.14);
+    border-radius: 16px;
+    background:
+        radial-gradient(500px 240px at 50% 0%, rgba(60, 118, 170, 0.08), transparent 70%),
+        rgba(5, 10, 17, 0.78);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255,255,255,.025);
+    overflow: hidden;
+}
+.tool-card-menu-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 2px 14px;
+}
+.tool-card-menu-kicker {
+    display: block;
+    margin-bottom: 4px;
+    color: #60748a;
+    font: 700 9px/1 var(--mono);
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+.tool-card-menu-head h2 {
+    margin: 0;
+    color: #dce8f2;
+    font-size: 18px;
+    font-weight: 650;
+    letter-spacing: -.025em;
+}
+.tool-card-menu-head p {
+    margin: 3px 0 0;
+    color: #71859b;
+    font-size: 11px;
+}
+.tool-card-menu-controls {
+    display: flex;
+    gap: 7px;
+    flex-shrink: 0;
+}
+.tool-card-nav {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(126, 161, 191, .16);
+    border-radius: 10px;
+    background: rgba(12, 22, 34, .82);
+    color: #a9bdcf;
+    font: 500 17px/1 var(--font);
+    cursor: pointer;
+    transition: transform 150ms var(--ease-out), background 180ms var(--ease-soft), border-color 180ms var(--ease-soft), color 180ms var(--ease-soft);
+    -webkit-tap-highlight-color: transparent;
+}
+.tool-card-nav:hover {
+    background: #142335;
+    border-color: rgba(104, 163, 211, .3);
+    color: #d8e7f3;
+}
+.tool-card-nav:active { transform: scale(.93); }
+
+.tool-card-carousel {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 300px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    perspective: 1100px;
+    isolation: isolate;
+    touch-action: pan-y;
+}
+.tool-card-carousel .menu-tab.tool-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(310px, 62%);
+    height: 252px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0;
+    padding: 20px !important;
+    border: 1px solid rgba(124, 161, 192, .17) !important;
+    border-radius: 16px !important;
+    overflow: hidden;
+    text-align: left;
+    color: #dce8f2 !important;
+    background:
+        linear-gradient(160deg, rgba(24, 43, 60, .94), rgba(7, 14, 23, .98) 72%),
+        #0a111a !important;
+    box-shadow: 0 20px 46px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.035) !important;
+    cursor: pointer;
+    transform-origin: center center;
+    transition:
+        transform 420ms cubic-bezier(.22,.61,.36,1),
+        opacity 300ms cubic-bezier(.4,0,.2,1),
+        filter 300ms cubic-bezier(.4,0,.2,1),
+        border-color 220ms ease,
+        box-shadow 220ms ease;
+    will-change: transform, opacity;
+}
+.tool-card-carousel .menu-tab.tool-card::before,
+.tool-card-carousel .menu-tab.tool-card::after { content: none !important; }
+.tool-card-carousel .tool-card-icon {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(108, 165, 211, .18);
+    border-radius: 12px;
+    background: rgba(48, 104, 149, .11);
+    color: #8dbce0;
+    font: 700 11px/1 var(--mono);
+    letter-spacing: .04em;
+}
+.tool-card-copy { display: block; padding-right: 12px; }
+.tool-card-copy strong {
+    display: block;
+    color: #e3edf5;
+    font-size: 18px;
+    line-height: 1.25;
+    font-weight: 650;
+    letter-spacing: -.025em;
+}
+.tool-card-copy small {
+    display: block;
+    margin-top: 6px;
+    color: #8094a8;
+    font: 11px/1.5 var(--font);
+}
+.tool-card-arrow {
+    position: absolute;
+    right: 18px;
+    bottom: 20px;
+    color: #688198;
+    font-size: 17px;
+    transition: transform 180ms var(--ease-out), color 180ms ease;
+}
+.tool-card-carousel .menu-tab.tool-card:hover:not(.card-pos-center) {
+    border-color: rgba(119, 172, 212, .25) !important;
+}
+.tool-card-carousel .menu-tab.tool-card:hover .tool-card-arrow,
+.tool-card-carousel .menu-tab.tool-card.card-pos-center:hover .tool-card-arrow {
+    color: #a7cae4;
+    transform: translate(2px,-2px);
+}
+.tool-card-carousel .menu-tab.tool-card.card-pos-center {
+    transform: translate(-50%, -50%) translateX(0) rotateY(0deg) scale(1);
+    opacity: 1;
+    filter: none;
+    z-index: 5;
+    border-color: rgba(104, 163, 211, .34) !important;
+    box-shadow: 0 24px 56px rgba(0,0,0,.42), 0 0 0 1px rgba(90, 155, 207, .05), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+.tool-card-carousel .menu-tab.tool-card.card-pos-left {
+    transform: translate(-50%, -50%) translateX(-285px) rotateY(22deg) scale(.84);
+    opacity: .52;
+    filter: blur(.3px);
+    z-index: 3;
+}
+.tool-card-carousel .menu-tab.tool-card.card-pos-right {
+    transform: translate(-50%, -50%) translateX(285px) rotateY(-22deg) scale(.84);
+    opacity: .52;
+    filter: blur(.3px);
+    z-index: 3;
+}
+.tool-card-carousel .menu-tab.tool-card.card-pos-left-2 {
+    transform: translate(-50%, -50%) translateX(-490px) rotateY(30deg) scale(.68);
+    opacity: .15;
+    filter: blur(1.5px);
+    z-index: 1;
+    pointer-events: none;
+}
+.tool-card-carousel .menu-tab.tool-card.card-pos-right-2 {
+    transform: translate(-50%, -50%) translateX(490px) rotateY(-30deg) scale(.68);
+    opacity: .15;
+    filter: blur(1.5px);
+    z-index: 1;
+    pointer-events: none;
+}
+.tool-card-carousel .menu-tab.tool-card.card-pos-hidden {
+    transform: translate(-50%, -50%) translateX(0) scale(.5);
+    opacity: 0;
+    filter: blur(2px);
+    pointer-events: none;
+    z-index: 0;
+}
+.tool-card-carousel.is-dragging .menu-tab.tool-card { transition-duration: 180ms; }
+.tool-card-carousel:focus-within { outline: none; }
+
+.tool-card-menu-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 12px;
+}
+.tool-card-dots { display: flex; align-items: center; gap: 6px; }
+.tool-card-dot {
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #425365;
+    cursor: pointer;
+    transition: width 180ms var(--ease-out), background 180ms ease, opacity 180ms ease;
+}
+.tool-card-dot.active {
+    width: 20px;
+    background: #91b9d8;
+}
+.tool-card-hint {
+    color: #52667b;
+    font: 9px/1 var(--mono);
+    letter-spacing: .05em;
+}
+
+@media (max-width: 760px) {
+    .tool-card-menu { padding: 15px 12px 12px; border-radius: 14px; }
+    .tool-card-menu-head { align-items: center; padding-bottom: 10px; }
+    .tool-card-menu-head h2 { font-size: 16px; }
+    .tool-card-menu-head p { display: none; }
+    .tool-card-carousel { height: 276px; }
+    .tool-card-carousel .menu-tab.tool-card { width: min(260px, 67%); height: 234px; padding: 18px !important; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-left { transform: translate(-50%, -50%) translateX(-138px) rotateY(18deg) scale(.73); opacity: .32; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-right { transform: translate(-50%, -50%) translateX(138px) rotateY(-18deg) scale(.73); opacity: .32; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-left-2,
+    .tool-card-carousel .menu-tab.tool-card.card-pos-right-2 { opacity: 0; }
+    .tool-card-copy strong { font-size: 16px; }
+    .tool-card-copy small { font-size: 10px; }
+}
+@media (max-width: 430px) {
+    .tool-card-menu-head { gap: 8px; }
+    .tool-card-menu-controls { gap: 5px; }
+    .tool-card-nav { width: 34px; height: 34px; }
+    .tool-card-carousel { height: 268px; }
+    .tool-card-carousel .menu-tab.tool-card { width: 245px; height: 228px; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-left { transform: translate(-50%, -50%) translateX(-112px) rotateY(16deg) scale(.68); opacity: .22; }
+    .tool-card-carousel .menu-tab.tool-card.card-pos-right { transform: translate(-50%, -50%) translateX(112px) rotateY(-16deg) scale(.68); opacity: .22; }
+    .tool-card-hint { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tool-card-carousel .menu-tab.tool-card,
+    .tool-card-nav,
+    .tool-card-dot,
+    .tool-card-arrow { transition: none !important; }
+}
