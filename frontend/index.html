@@ -478,10 +478,10 @@
 
             <div id="pyLayersBox" style="margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">
                 <div class="login-field" style="margin-bottom:10px;">
-                    <label for="pyLayers" data-i18n="py.layers">Jumlah layer XOR/ROL (1–99)</label>
-                    <input type="number" id="pyLayers" min="1" max="99" value="16" style="max-width:120px;" />
+                    <label for="pyLayers" data-i18n="py.layers">Jumlah layer (2–10)</label>
+                    <input type="number" id="pyLayers" min="2" max="10" value="3" style="max-width:120px;" />
                 </div>
-                <p class="admin-hint" style="margin:0;" data-i18n="py.layers_hint">Lebih banyak layer = lebih lambat encrypt/decrypt. Default 16 cukup kuat &amp; cepat.</p>
+                <p class="admin-hint" style="margin:0;" data-i18n="py.layers_hint">Setiap layer memakai XOR + zlib + Chinese Unicode. Default 3 sesuai pipeline Enc Py.</p>
             </div>
 
             <div id="pyShellWmBox" style="display:none; margin:16px 0; background:var(--bg-secondary); padding:14px 16px; border-radius:10px; border:1px solid var(--border-color);">

@@ -35,7 +35,7 @@
             ext: ['.py'],
             pick: 'pilih file .py',
             hint: 'upload 1 file .py ke sini',
-            desc: 'Enkripsi file <strong>.py</strong> jadi skrip self-decrypt (AES-256 + multi-layer XOR/ROL). Semua proses di browser — file tidak diunggah ke server. Butuh <code>pycryptodome</code> saat dijalankan.',
+            desc: 'Enkripsi file <strong>.py</strong> dengan pipeline multi-layer bergaya <code>en.py</code> (XOR + zlib + Chinese Unicode). Semua proses di browser — file tidak diunggah ke server.',
             showLayers: true,
             showShellWm: false,
             maxSize: 2 * 1024 * 1024
@@ -181,131 +181,109 @@
     }
 
     // ── Enc Py (existing pipeline) ──────────────────────────────────────────
+    // ── Enc Py (en.py-style Chinese multi-layer pipeline) ────────────────
+    // Browser-compatible port of en.py's layer structure:
+    // source -> zlib -> XOR -> Chinese Unicode, repeated 2..10 times.
+    // The reference en.py uses Python marshal before each layer; because this
+    // tool runs entirely in the browser, the same wrapping/decryption
+    // structure is retained while carrying UTF-8 Python source between layers.
+    function randomChinese(length) {
+        let s = '';
+        for (let i = 0; i < length; i++) {
+            s += String.fromCharCode(0x4e00 + randInt(0, 220));
+        }
+        return s;
+    }
+
+    function pyLoader(chinesePayload, key, base) {
+        base = base || 19968;
+        const varPayload = randomChinese(18);
+        const varKey = randomChinese(9);
+        const varBase = randomChinese(8);
+        const funcName = randomChinese(13);
+        const varBuf = randomChinese(7);
+        const varI = randomChinese(4);
+        const varC = randomChinese(5);
+        const varTmp = randomChinese(8);
+
+        const comments = [
+            '# 内存优化处理', '# 系统资源监控', '# 加密算法初始化',
+            '# 网络连接稳定', '# 系统初始化完成', '# 随机数种子生成',
+            '# 哈希表构建完成', '# 异常处理机制就绪', '# 用户权限验证',
+            '# 安全检查通过', '# 数据加密传输', '# 垃圾回收器启动',
+            '# 缓存清理完成', '# 启动日志记录'
+        ];
+        function sample(n, indent) {
+            const pool = comments.slice();
+            const out = [];
+            while (out.length < n && pool.length) {
+                const idx = randInt(0, pool.length - 1);
+                out.push((indent || '') + pool.splice(idx, 1)[0]);
+            }
+            return out.join('\n');
+        }
+
+        return `# Obfuscate By JuliaXSec
+# COBA SAJA DECRYPT JIKA MAMPU
+# Telegram : t.me/pinguinpv
+
+${sample(6)}
+import zlib
+${varPayload}=${JSON.stringify(chinesePayload)}
+${varKey}=${key}
+${varBase}=${base}
+${sample(4)}
+def ${funcName}(${varTmp},${varKey}):
+${sample(5, '    ')}
+    ${varBuf}=bytearray()
+    for ${varI},${varC} in enumerate(${varTmp}):
+        ${varBuf}.append(ord(${varC})-${varBase})
+    ${varTmp}=zlib.decompress(bytes(${varBuf}))
+    ${varBuf}=bytearray()
+    for ${varI},${varC} in enumerate(${varTmp}):
+        ${varBuf}.append(${varC}^((${varKey}+${varI})%256))
+    return bytes(${varBuf}).decode('utf-8')
+${sample(5)}
+exec(${funcName}(${varPayload},${varKey}))
+`;
+    }
+
     async function buildEncryptedPy(sourceText, layers) {
         const encoder = new TextEncoder();
         const raw = encoder.encode(sourceText);
-        const integrity = await sha256Hex(raw);
+        let current = sourceText;
+        const usedKeys = [];
 
-        setProgress(10, 'compress');
-        let data = await deflateRaw(raw);
-
-        setProgress(25, 'layers');
-        const flatLayers = [];
-        for (let i = 0; i < layers; i++) {
-            const xorKey = randInt(15, 250);
-            const shift = randInt(1, 7);
-            flatLayers.push(xorKey, shift);
-            const rolled = new Uint8Array(data.length);
-            for (let j = 0; j < data.length; j++) rolled[j] = rolByte(data[j], shift);
-            const xored = new Uint8Array(data.length);
-            for (let j = 0; j < data.length; j++) xored[j] = rolled[j] ^ xorKey;
-            data = xored;
+        if (!Number.isInteger(layers) || layers < 2 || layers > 10) {
+            throw new Error('Jumlah layer harus antara 2 sampai 10');
         }
 
-        setProgress(50, 'AES-256');
-        const masterKey = randBytes(32);
-        const aesIv = randBytes(16);
-        const encrypted = await aesEncryptCbc(masterKey, aesIv, data);
+        for (let i = 0; i < layers; i++) {
+            setProgress(10 + Math.round((i / layers) * 75), 'layer ' + (i + 1) + '/' + layers);
 
-        const maskKey = randBytes(32);
-        const maskIv = randBytes(16);
-        const maskedKey = xorBytes(masterKey, maskKey);
-        const maskedIv = xorBytes(aesIv, maskIv);
+            const key = randInt(10000, 30000);
+            usedKeys.push(key);
 
-        const chunk = Math.floor(encrypted.length / 4);
-        const p1 = encrypted.subarray(0, chunk);
-        const p2 = encrypted.subarray(chunk, chunk * 2);
-        const p3 = encrypted.subarray(chunk * 2, chunk * 3);
-        const p4 = encrypted.subarray(chunk * 3);
+            const layerBytes = encoder.encode(current);
+            const xored = new Uint8Array(layerBytes.length);
+            for (let j = 0; j < layerBytes.length; j++) {
+                xored[j] = layerBytes[j] ^ ((key + j) % 256);
+            }
+            const compressed = await deflateRaw(xored);
+            const chinese = Array.from(compressed, function (b) {
+                return String.fromCharCode(b + 19968);
+            }).join('');
 
-        const cjkRunner = cjkName(6);
-        const cjkD1 = cjkName(7), cjkD2 = cjkName(7), cjkD3 = cjkName(7), cjkD4 = cjkName(7);
-        const metaName = cjkName(5);
-        const className = cjkName(5);
-        const loopK = cjkName(4), loopS = cjkName(4), storeVar = cjkName(5);
-        const hash1 = integrity.slice(0, Math.floor(integrity.length / 2));
-        const hash2 = integrity.slice(Math.floor(integrity.length / 2));
-
-        setProgress(75, 'template');
-        const template = `#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# ABSOLUTE WATERPROOF ENCRYPTION — MLBB Unity Tools / Python Encrypted
-# Requires: pip install pycryptodome
-
-import sys, zlib, hashlib
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
-
-def _anti_debug():
-    if sys.gettrace() is not None:
-        sys.exit(1)
-
-class ${metaName}(type):
-    def __init__(cls, name, bases, attrs):
-        super().__init__(name, bases, attrs)
-
-class ${className}(metaclass=${metaName}):
-    @staticmethod
-    def _xor(d, m):
-        return bytes(a ^ b for a, b in zip(d, m))
-
-    @staticmethod
-    def _layers():
-        flat = ${JSON.stringify(flatLayers)}
-        return [(flat[i], flat[i + 1]) for i in range(0, len(flat), 2)]
-
-${cjkD1} = bytes(${toPyBytesList(p1)})
-${cjkD2} = bytes(${toPyBytesList(p2)})
-${cjkD3} = bytes(${toPyBytesList(p3)})
-${cjkD4} = bytes(${toPyBytesList(p4)})
-
-def ${cjkRunner}():
-    _anti_debug()
-    try:
-        raw_enc = ${cjkD1} + ${cjkD2} + ${cjkD3} + ${cjkD4}
-    except Exception:
-        sys.exit(1)
-
-    real_key = ${className}._xor(bytes(${toPyBytesList(maskedKey)}), bytes(${toPyBytesList(maskKey)}))
-    real_iv = ${className}._xor(bytes(${toPyBytesList(maskedIv)}), bytes(${toPyBytesList(maskIv)}))
-
-    try:
-        dec = AES.new(real_key, AES.MODE_CBC, real_iv).decrypt(raw_enc)
-        ${storeVar} = unpad(dec, AES.block_size)
-    except Exception:
-        sys.exit(1)
-
-    for ${loopK}, ${loopS} in reversed(${className}._layers()):
-        ${storeVar} = bytes(b ^ ${loopK} for b in ${storeVar})
-        ${storeVar} = bytes(((b >> ${loopS}) | ((b << (8 - ${loopS})) & 0xFF)) & 0xFF for b in ${storeVar})
-
-    try:
-        _src = zlib.decompress(${storeVar})
-    except Exception:
-        _src = ${storeVar}
-
-    _hp = [${JSON.stringify(hash1)}, ${JSON.stringify(hash2)}]
-    if hashlib.sha256(_src).hexdigest() != "".join(_hp):
-        sys.exit(1)
-
-    return _src.decode("utf-8")
-
-if __name__ == "__main__":
-    try:
-        _code = ${cjkRunner}()
-        if _code:
-            exec(compile(_code, "<encrypted>", "exec"), globals())
-    except Exception:
-        sys.exit(1)
-`;
+            current = pyLoader(chinese, key, 19968);
+        }
 
         setProgress(95, 'done');
         return {
-            text: template,
+            text: current,
             layers: layers,
+            keys: usedKeys,
             inSize: raw.length,
-            outSize: template.length,
-            integrity: integrity
+            outSize: encoder.encode(current).length
         };
     }
 
@@ -679,15 +657,15 @@ if __name__ == "__main__":
 
             if (mode === 'py') {
                 let layers = parseInt(pyLayers && pyLayers.value, 10);
-                if (isNaN(layers) || layers < 1) layers = 16;
-                if (layers > 99) layers = 99;
+                if (isNaN(layers) || layers < 2) layers = 3;
+                if (layers > 10) layers = 10;
                 if (pyStatLayers) pyStatLayers.textContent = String(layers);
                 result = await buildEncryptedPy(pySource, layers);
                 outName = (pyOrigName || 'script.py').replace(/\.py$/i, '') + '_encrypted.py';
                 mime = 'text/x-python;charset=utf-8';
                 resultHtml =
-                    '✅ <strong>' + outName + '</strong> siap dijalankan dengan Python 3 + <code>pycryptodome</code>.<br>' +
-                    'SHA-256 source: <code style="font-size:11px;">' + result.integrity.slice(0, 16) + '…</code> · layers: ' + result.layers;
+                    '✅ <strong>' + outName + '</strong> siap dijalankan dengan Python 3 (stdlib).<br>' +
+                    'Pipeline: XOR + zlib + Chinese Unicode · layers: ' + result.layers;
             } else if (mode === 'shell') {
                 if (pyStatLayers) pyStatLayers.textContent = '—';
                 const author = pyShellAuthor ? pyShellAuthor.value : 'ZALL XD';
