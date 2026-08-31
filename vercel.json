@@ -63,5 +63,11 @@
     "api/**/*.js": {
       "includeFiles": "backend/tools/**"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cleanup-expired",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }

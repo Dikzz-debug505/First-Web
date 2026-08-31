@@ -13,6 +13,7 @@
  *   - Sub-admin (is_admin, !is_super): hanya lihat/kelola user biasa, tidak bisa sentuh admin
  */
 const { requireAdmin, getSupabase, sha256Hex, parseBody, json } = require('../../lib/session');
+const { cleanupAllExpiredUsers } = require('../../lib/cleanup-expired');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -34,6 +35,11 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    // Auto-cleanup akun kedaluarsa sebelum list (fire-and-forget aman)
+    try {
+      await cleanupAllExpiredUsers();
+    } catch (_) {}
+
     let query = supabase
       .from('app_users')
       .select('username, password_hash, is_admin, is_super, max_devices, expiry_date, is_active, created_at, updated_at')

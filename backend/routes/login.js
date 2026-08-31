@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { getSupabase, sha256Hex, parseBody, json, issueToken } = require('../lib/session');
+const { deleteExpiredUserByUsername } = require('../lib/cleanup-expired');
 
 /** Username: 1–64 chars, only safe set (no SQL/ILIKE metacharacters) */
 const USERNAME_RE = /^[a-zA-Z0-9._-]{1,64}$/;
@@ -188,6 +189,10 @@ module.exports = async function handler(req, res) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (isNaN(expDate.getTime()) || today > expDate) {
+      // Auto-hapus akun yang sudah kedaluarsa (user biasa saja)
+      try {
+        await deleteExpiredUserByUsername(row.username);
+      } catch (_) {}
       return failResponse(res, 'Akun sudah kedaluarsa', { expired: true });
     }
   }

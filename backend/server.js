@@ -44,6 +44,10 @@ app.options('/api/admin/maintenance', mount(require('./routes/admin/maintenance'
 app.get('/api/admin/maintenance', mount(require('./routes/admin/maintenance')));
 app.post('/api/admin/maintenance', mount(require('./routes/admin/maintenance')));
 
+app.options('/api/cleanup-expired', mount(require('./routes/cleanup-expired')));
+app.get('/api/cleanup-expired', mount(require('./routes/cleanup-expired')));
+app.post('/api/cleanup-expired', mount(require('./routes/cleanup-expired')));
+
 // Protected tool scripts (obscure paths, auth required)
 const toolHandler = require('./routes/tools');
 ['1','2','3','4'].forEach(function (id) {
