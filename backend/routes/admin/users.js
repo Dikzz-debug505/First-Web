@@ -144,7 +144,7 @@ module.exports = async function handler(req, res) {
 
     const { data: existingRows, error: findErr } = await supabase
       .from('app_users')
-      .select('username, is_admin, is_super, password_hash')
+      .select('username, is_admin, is_super, password_hash, is_active')
       .eq('username', username)
       .limit(1);
 
@@ -159,7 +159,7 @@ module.exports = async function handler(req, res) {
     if (!existing) {
       const { data: rows2, error: err2 } = await supabase
         .from('app_users')
-        .select('username, is_admin, is_super, password_hash')
+        .select('username, is_admin, is_super, password_hash, is_active')
         .ilike('username', username.replace(/[%_]/g, ''))
         .limit(5);
       if (err2) {
@@ -170,7 +170,7 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    // Tidak boleh mengubah akun admin lewat panel (kecuali super mengedit sub-admin non-super? — tetap diblok untuk keamanan)
+    // Tidak boleh mengubah akun admin lewat panel
     if (existing && existing.is_admin) {
       return json(res, 200, {
         ok: false,
@@ -194,7 +194,15 @@ module.exports = async function handler(req, res) {
         updated_at: new Date().toISOString()
       };
       if (password) {
-        patch.password_hash = sha256Hex(password);
+        const newHash = sha256Hex(password);
+        // Username boleh sama, password harus beda jika diganti
+        if (existing.password_hash && newHash === existing.password_hash) {
+          return json(res, 200, {
+            ok: false,
+            message: 'Password harus berbeda dari password lama'
+          });
+        }
+        patch.password_hash = newHash;
       }
       const { error: updErr } = await supabase
         .from('app_users')
@@ -208,8 +216,50 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { ok: true, message: 'User diperbarui', username: existing.username });
     }
 
+    // CREATE: username boleh sama, password wajib berbeda
+    // → reuse row existing (aktif/nonaktif) dengan password baru
     if (existing) {
-      return json(res, 200, { ok: false, message: 'Username sudah dipakai' });
+      if (!password || password.length < 1) {
+        return json(res, 200, {
+          ok: false,
+          message: 'Password wajib saat memakai ulang username'
+        });
+      }
+      const newHash = sha256Hex(password);
+      if (existing.password_hash && newHash === existing.password_hash) {
+        return json(res, 200, {
+          ok: false,
+          message: 'Username sudah dipakai — password harus berbeda'
+        });
+      }
+
+      // Reset device lama (pembeli/device baru)
+      await supabase.from('user_devices').delete().eq('username', existing.username);
+
+      const { error: reuseErr } = await supabase
+        .from('app_users')
+        .update({
+          password_hash: newHash,
+          max_devices: maxDevices,
+          expiry_date: expiryDate,
+          is_active: true,
+          is_admin: false,
+          is_super: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('username', existing.username);
+
+      if (reuseErr) {
+        console.error('admin reuse username', reuseErr);
+        return json(res, 500, { ok: false, message: 'Gagal memakai ulang username' });
+      }
+
+      return json(res, 200, {
+        ok: true,
+        message: 'Username dipakai ulang dengan password baru',
+        username: existing.username,
+        reused: true
+      });
     }
 
     const newIsAdmin = createAsAdmin && isSuper;

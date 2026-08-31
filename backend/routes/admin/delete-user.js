@@ -1,7 +1,7 @@
 /**
  * POST /api/admin/delete-user
  * Body: { username }
- * Soft-delete: is_active = false + hapus device registry
+ * Hard-delete: hapus row user + device registry (username bisa dipakai ulang)
  * Auth: Bearer admin token
  *
  * Aturan:
@@ -69,17 +69,17 @@ module.exports = async function handler(req, res) {
 
   const uname = row.username;
 
-  const { error: updErr } = await supabase
+  await supabase.from('user_devices').delete().eq('username', uname);
+
+  const { error: delErr } = await supabase
     .from('app_users')
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .delete()
     .eq('username', uname);
 
-  if (updErr) {
-    console.error('admin soft-delete', updErr);
+  if (delErr) {
+    console.error('admin hard-delete', delErr);
     return json(res, 500, { ok: false, message: 'Gagal menghapus user' });
   }
 
-  await supabase.from('user_devices').delete().eq('username', uname);
-
-  return json(res, 200, { ok: true, message: 'User dihapus (dinonaktifkan)', username: uname });
+  return json(res, 200, { ok: true, message: 'User dihapus', username: uname });
 };
