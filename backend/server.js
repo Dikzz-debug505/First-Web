@@ -1,8 +1,6 @@
 /**
- * Local Full-Stack server (Express)
  * Usage: npm run dev  →  http://localhost:3000
- *
- * Production on Vercel uses /api/* serverless handlers instead.
+ * Production on Vercel uses
  */
 const path = require('path');
 const express = require('express');

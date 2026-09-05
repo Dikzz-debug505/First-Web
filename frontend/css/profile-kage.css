@@ -1,0 +1,70 @@
+/* Cinematic profile layer — Kage-inspired, original implementation */
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+:root{--pk-bg:#06080b;--pk-ink:#eee9dc;--pk-muted:#96938b;--pk-line:rgba(238,233,220,.15);--pk-red:#7c251e;--pk-amber:#d49a50}
+html{background:var(--pk-bg);scroll-behavior:auto}
+body{background:var(--pk-bg)!important;color:var(--pk-ink);overflow-x:hidden}
+#profileWebgl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+.profile-atmosphere,.profile-grain,.profile-vignette{position:fixed;inset:0;pointer-events:none}
+.profile-atmosphere{z-index:1;background:radial-gradient(circle at 66% 35%,rgba(100,110,130,.08),transparent 34%),linear-gradient(180deg,rgba(3,5,8,.05),rgba(3,5,8,.5))}
+.profile-grain{z-index:2;opacity:.065;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");mix-blend-mode:screen}
+.profile-vignette{z-index:3;box-shadow:inset 0 0 16vw 7vw rgba(0,0,0,.72)}
+.profile-topbar{position:fixed;z-index:10;left:0;right:0;top:0;height:74px;padding:0 4vw;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--pk-line);backdrop-filter:blur(7px);background:linear-gradient(180deg,rgba(4,6,8,.78),transparent);font-family:"IBM Plex Mono",monospace}
+.profile-brand{display:flex;gap:12px;align-items:center;font-size:9px;letter-spacing:.16em}
+.profile-brand-mark{font-family:serif;font-size:25px}
+.profile-nav{display:flex;gap:2.1vw;font-size:9px;letter-spacing:.1em}
+.profile-nav a{opacity:.42;transition:opacity .3s}.profile-nav a.active,.profile-nav a:hover{opacity:1}
+.profile-nav span{color:var(--pk-muted);margin-left:4px}
+.profile-progress{position:absolute;left:0;bottom:-1px;width:100%;height:1px;background:rgba(255,255,255,.06)}
+.profile-progress i{display:block;width:0;height:100%;background:var(--pk-ink)}
+.profile-page{position:relative;z-index:4;min-height:100vh;color:var(--pk-ink);font-family:"IBM Plex Mono",monospace}
+.profile-chapter{height:125vh;min-height:760px;position:relative;padding:15vh 7vw;display:flex;align-items:center}
+.profile-hero{height:140vh;padding-top:18vh}
+.profile-chapter-no{position:absolute;top:112px;left:7vw;color:var(--pk-muted);font-size:8px;letter-spacing:.2em}
+.profile-hero-copy{max-width:1000px}
+.profile-eyebrow{font-size:9px;letter-spacing:.24em;color:var(--pk-amber);margin:0 0 18px}
+.profile-avatar-wrap{position:relative;width:94px;height:94px;margin-bottom:28px}
+.profile-avatar{width:94px;height:94px;border-radius:50%;overflow:hidden;border:1px solid rgba(238,233,220,.5);background:#121519;position:relative;z-index:2;filter:saturate(.7)}
+.profile-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.profile-avatar-ring{position:absolute;inset:-8px;border:1px solid rgba(212,154,80,.35);border-radius:50%;animation:pkPulse 4s ease-in-out infinite}
+.profile-avatar-ring:after{content:"";position:absolute;inset:-9px;border:1px solid rgba(212,154,80,.1);border-radius:50%}
+@keyframes pkPulse{50%{opacity:.75;transform:scale(1.035)}}
+.profile-hero h1,.profile-chapter h2{font-family:"Cormorant Garamond",serif;font-weight:400;letter-spacing:-.055em;line-height:.82;margin:0}
+.profile-hero h1{font-size:clamp(70px,11vw,160px)}
+.profile-hero h1 em,.profile-chapter h2 em{font-weight:400;color:#c5c0b3}
+.profile-lead{max-width:430px;color:var(--pk-muted);font-size:10px;line-height:1.9;margin:32px 0 0}
+.profile-scroll{display:flex;align-items:center;gap:12px;margin-top:65px;font-size:8px;letter-spacing:.2em}
+.profile-scroll span{width:38px;height:1px;background:var(--pk-ink)}
+.profile-copy{max-width:620px}
+.profile-right .profile-copy{margin-left:auto;text-align:right}
+.profile-chapter h2{font-size:clamp(60px,8vw,116px);margin:0 0 34px}
+.profile-copy>p:not(.profile-eyebrow){max-width:440px;color:var(--pk-muted);font-size:10px;line-height:2.05}
+.profile-right .profile-copy>p:not(.profile-eyebrow){margin-left:auto}
+.profile-motto{display:inline-block;margin-top:35px;border:1px solid var(--pk-line);padding:11px 16px;font-size:9px;letter-spacing:.05em;color:#c8c1b2}
+.profile-data,.profile-tool-list{border-top:1px solid var(--pk-line);margin-top:40px}
+.profile-data>div{display:grid;grid-template-columns:130px 1fr;gap:15px;padding:14px 0;border-bottom:1px solid var(--pk-line);font-size:10px}
+.profile-data b{font-weight:400;color:var(--pk-amber);text-align:left}.profile-data span{color:var(--pk-ink);text-align:right}
+.profile-tool-list article{display:grid;grid-template-columns:35px 1fr 80px;align-items:center;gap:15px;padding:17px 0;border-bottom:1px solid var(--pk-line)}
+.profile-tool-list article>b{font-weight:400;color:var(--pk-amber);font-size:9px}
+.profile-tool-list strong{display:block;font:500 12px "IBM Plex Mono",monospace}
+.profile-tool-list span{display:block;color:var(--pk-muted);font-size:9px;margin-top:5px;line-height:1.6}
+.profile-tool-list small{font-size:8px;color:#666;text-align:right;letter-spacing:.14em}
+.profile-support{display:flex;justify-content:flex-end;gap:10px;margin-top:38px}
+.profile-support span{min-width:120px;padding:14px;border:1px solid var(--pk-line);text-align:left;background:rgba(10,12,15,.25)}
+.profile-support strong{display:block;font:500 11px "IBM Plex Mono",monospace}.profile-support small{color:var(--pk-muted);font-size:8px}
+.profile-final{height:120vh;min-height:700px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.profile-final .profile-chapter-no{left:50%;transform:translateX(-50%);white-space:nowrap}
+.profile-final h2{font-size:clamp(65px,9vw,135px);margin-bottom:28px}
+.profile-final>p{color:var(--pk-muted);font-size:9px}
+.profile-actions{display:flex;gap:10px;margin-top:38px}.profile-button{border:1px solid var(--pk-line);padding:15px 22px;font-size:8px;letter-spacing:.16em;transition:.3s}.profile-button span{margin-left:22px}.profile-button:hover{background:var(--pk-ink);color:#06080b}.profile-button.ghost{opacity:.65}
+.profile-final footer{position:absolute;bottom:30px;color:#5e5c58;font-size:7px;letter-spacing:.13em}
+@media(max-width:800px){
+ .profile-topbar{height:64px;padding:0 5vw}.profile-brand span:last-child{display:none}.profile-nav{display:none}
+ .profile-chapter{height:115vh;min-height:680px;padding:15vh 8vw}.profile-hero{height:112vh}.profile-chapter-no{left:8vw;top:94px}
+ .profile-hero h1{font-size:clamp(65px,17vw,105px)}.profile-chapter h2{font-size:clamp(55px,14vw,90px)}
+ .profile-right .profile-copy{margin-left:0;text-align:left}.profile-right .profile-copy>p:not(.profile-eyebrow){margin-left:0}
+ .profile-data>div{grid-template-columns:95px 1fr}.profile-data span{text-align:left}
+ .profile-tool-list article{grid-template-columns:30px 1fr}.profile-tool-list small{display:none}
+ .profile-support{justify-content:flex-start}.profile-final h2{font-size:clamp(60px,16vw,95px)}
+}
+@media(max-width:480px){.profile-chapter{padding-inline:7vw}.profile-avatar-wrap{width:82px;height:82px}.profile-avatar{width:82px;height:82px}.profile-copy>p:not(.profile-eyebrow){font-size:9px}.profile-button{padding:13px 15px}.profile-button span{margin-left:10px}}
+@media(prefers-reduced-motion:reduce){.profile-avatar-ring{animation:none}.profile-button{transition:none}}
