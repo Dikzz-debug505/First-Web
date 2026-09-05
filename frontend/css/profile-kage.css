@@ -79,3 +79,6 @@ body{background:var(--pk-bg)!important;color:var(--pk-ink);overflow-x:hidden}
 .profile-kage h1,.profile-kage h2,h1,h2{color:var(--ink);text-shadow:0 1px 18px rgba(255,255,255,.28)}
 .profile-kage .eyebrow,.eyebrow{color:#9a3b30}
 .profile-kage .button,.button{border-color:var(--line)}
+
+/* Legacy Card Menu intentionally disabled */
+.tool-card-carousel,.card-menu-controls,.tool-card-dot{display:none!important}
