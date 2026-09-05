@@ -1,6 +1,6 @@
 /* Cinematic profile layer — Kage-inspired, original implementation */
 @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
-:root{--pk-bg:#06080b;--pk-ink:#eee9dc;--pk-muted:#96938b;--pk-line:rgba(238,233,220,.15);--pk-red:#7c251e;--pk-amber:#d49a50}
+:root{--pk-bg:#06080b;--pk-ink:#28322f;--pk-muted:#96938b;--pk-line:rgba(238,233,220,.15);--pk-red:#7c251e;--pk-amber:#d49a50}
 html{background:var(--pk-bg);scroll-behavior:auto}
 body{background:var(--pk-bg)!important;color:var(--pk-ink);overflow-x:hidden}
 #profileWebgl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
@@ -68,3 +68,14 @@ body{background:var(--pk-bg)!important;color:var(--pk-ink);overflow-x:hidden}
 }
 @media(max-width:480px){.profile-chapter{padding-inline:7vw}.profile-avatar-wrap{width:82px;height:82px}.profile-avatar{width:82px;height:82px}.profile-copy>p:not(.profile-eyebrow){font-size:9px}.profile-button{padding:13px 15px}.profile-button span{margin-left:10px}}
 @media(prefers-reduced-motion:reduce){.profile-avatar-ring{animation:none}.profile-button{transition:none}}
+
+/* Japan / daylight cinematic refresh */
+:root{
+  --bg:#eef4f5; --ink:#28322f; --muted:#66736e; --line:rgba(40,50,47,.15);
+  --accent:#a83d32; --paper:#f6f1e6;
+}
+.profile-overlay{mix-blend-mode:normal}
+.profile-kage .chapter-no,.chapter-no{color:var(--muted)}
+.profile-kage h1,.profile-kage h2,h1,h2{color:var(--ink);text-shadow:0 1px 18px rgba(255,255,255,.28)}
+.profile-kage .eyebrow,.eyebrow{color:#9a3b30}
+.profile-kage .button,.button{border-color:var(--line)}
