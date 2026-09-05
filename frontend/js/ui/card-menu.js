@@ -20,7 +20,6 @@
         let dragging = false;
         let suppressClickUntil = 0;
         let syncFrame = 0;
-        let idleTimer = null;
         const dots = [];
 
         function normalize(index) {
@@ -82,18 +81,9 @@
         function nextCard() { activate(active + 1); }
         function previousCard() { activate(active - 1); }
 
-        function stopIdle() {
-            if (idleTimer) clearInterval(idleTimer);
-            idleTimer = null;
-        }
-
-        function startIdle() {
-            stopIdle();
-            if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-            idleTimer = setInterval(nextCard, 6500);
-        }
-
-        function restartIdle() { startIdle(); }
+        function stopIdle() {}
+        function startIdle() {}
+        function restartIdle() {}
 
         cards.forEach((card, index) => {
             card.setAttribute(
